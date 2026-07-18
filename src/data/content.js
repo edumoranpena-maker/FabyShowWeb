@@ -4,7 +4,7 @@
 // por fotos y videos reales de tus eventos antes de publicar.
 // ============================================================
 
-export const WHATSAPP_NUMBER = '51999999999' // TODO: reemplazar por el número real (formato 51 + 9 dígitos)
+export const WHATSAPP_NUMBER = '51931230749'
 
 export const whatsappLink = (mensaje) =>
   `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(mensaje)}`
@@ -144,10 +144,8 @@ export const FAQS = [
 ]
 
 export const CONTACTO = {
-  direccion: 'Lima, Perú (atención a todos los distritos)',
-  horario: 'Lunes a domingo, 9:00 am – 8:00 pm',
+  direccion: 'Sullana, Piura (atención a toda la provincia)',
+  horario: 'Lunes a domingo, 8:00 am – 11:00 pm',
   instagram: 'https://instagram.com/fabyshow',
-  facebook: 'https://facebook.com/fabyshow',
   tiktok: 'https://tiktok.com/@fabyshow',
-  mapsEmbed: 'https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d31347.489!2d-77.0428!3d-12.0464!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0x0!2zMTLCsDAyJzQ2LjQiUyA3N8KwMDInMzQuMSJX!5e0!3m2!1ses!2spe!4v1234567890',
 }
