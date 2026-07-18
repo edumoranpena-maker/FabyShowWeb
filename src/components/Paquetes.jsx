@@ -29,11 +29,7 @@ export default function Paquetes() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, margin: '-60px' }}
               transition={{ duration: 0.55, delay: i * 0.1, ease: 'easeOut' }}
-              className={`relative rounded-4xl p-7 md:p-8 flex flex-col ${
-                p.destacado
-                  ? 'bg-party-gradient text-white shadow-glow md:-translate-y-4 md:scale-[1.03]'
-                  : 'bg-white text-ink border border-ink/8 shadow-card'
-              }`}
+              className="relative rounded-4xl p-7 md:p-8 flex flex-col bg-white text-ink border border-ink/8 shadow-card"
             >
               {p.destacado && (
                 <div className="absolute -top-4 left-1/2 -translate-x-1/2 flex items-center gap-1.5 bg-amarillo-400 text-ink text-xs font-bold px-4 py-1.5 rounded-full shadow-md">
@@ -42,17 +38,17 @@ export default function Paquetes() {
                 </div>
               )}
 
-              <h3 className={`font-display text-xl md:text-2xl font-semibold mb-1 ${p.destacado ? 'text-white' : 'text-ink'}`}>
+              <h3 className="font-display text-xl md:text-2xl font-semibold mb-1 text-ink">
                 {p.nombre}
               </h3>
 
-              <div className={`flex items-center gap-1.5 text-sm mb-5 ${p.destacado ? 'text-white/80' : 'text-ink/50'}`}>
+              <div className="flex items-center gap-1.5 text-sm mb-5 text-ink/50">
                 <Clock className="w-4 h-4" />
                 {p.duracion}
               </div>
 
               <div className="mb-6">
-                <span className={`font-display text-3xl md:text-4xl font-semibold ${p.destacado ? 'text-white' : 'text-gradient'}`}>
+                <span className="font-display text-3xl md:text-4xl font-semibold text-gradient">
                   {p.precio}
                 </span>
               </div>
@@ -60,21 +56,17 @@ export default function Paquetes() {
               <ul className="flex flex-col gap-3 mb-8 flex-1">
                 {p.incluye.map((item) => (
                   <li key={item} className="flex items-start gap-2.5 text-sm">
-                    <span
-                      className={`mt-0.5 flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center ${
-                        p.destacado ? 'bg-white/20' : 'bg-fucsia-50'
-                      }`}
-                    >
-                      <Check className={`w-3 h-3 ${p.destacado ? 'text-white' : 'text-fucsia-600'}`} strokeWidth={3} />
+                    <span className="mt-0.5 flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center bg-fucsia-50">
+                      <Check className="w-3 h-3 text-fucsia-600" strokeWidth={3} />
                     </span>
-                    <span className={p.destacado ? 'text-white/95' : 'text-ink/75'}>{item}</span>
+                    <span className="text-ink/75">{item}</span>
                   </li>
                 ))}
               </ul>
 
               <WhatsAppButton
                 href={whatsappLink(MENSAJES.paquete(p.nombre))}
-                variant={p.destacado ? 'secondary' : 'primary'}
+                variant="primary"
                 className="w-full"
               >
                 Reservar por WhatsApp

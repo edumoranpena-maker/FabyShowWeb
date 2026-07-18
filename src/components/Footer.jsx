@@ -1,6 +1,6 @@
-import { PartyPopper, Instagram, Facebook, MessageCircle } from 'lucide-react'
+import { PartyPopper, Instagram, MessageCircle } from 'lucide-react'
 import { NAV_LINKS, CONTACTO, whatsappLink, MENSAJES } from '../data/content'
-import WhatsAppButton from './WhatsAppButton'
+import TikTokIcon from './icons/TikTokIcon'
 
 export default function Footer() {
   const year = new Date().getFullYear()
@@ -16,12 +16,9 @@ export default function Footer() {
               </span>
               Faby Show
             </div>
-            <p className="font-body text-sm text-white/60 max-w-sm mb-6">
+            <p className="font-body text-sm text-white/60 max-w-sm">
               Animacion profesional de eventos infantiles en Peru. Convertimos cada cumpleanos en un espectaculo inolvidable, con un equipo que se encarga de todo.
             </p>
-            <WhatsAppButton href={whatsappLink(MENSAJES.general)} size="md">
-              Cotizar por WhatsApp
-            </WhatsAppButton>
           </div>
 
           <div>
@@ -44,11 +41,11 @@ export default function Footer() {
               <li>{CONTACTO.horario}</li>
             </ul>
             <div className="flex gap-3 mt-4">
+              <a href={CONTACTO.tiktok} target="_blank" rel="noopener noreferrer" aria-label="TikTok" className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center hover:bg-fucsia-500 transition-colors">
+                <TikTokIcon className="w-4 h-4" />
+              </a>
               <a href={CONTACTO.instagram} target="_blank" rel="noopener noreferrer" aria-label="Instagram" className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center hover:bg-fucsia-500 transition-colors">
                 <Instagram className="w-4 h-4" />
-              </a>
-              <a href={CONTACTO.facebook} target="_blank" rel="noopener noreferrer" aria-label="Facebook" className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center hover:bg-fucsia-500 transition-colors">
-                <Facebook className="w-4 h-4" />
               </a>
               <a href={whatsappLink(MENSAJES.general)} target="_blank" rel="noopener noreferrer" aria-label="WhatsApp" className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center hover:bg-[#25D366] transition-colors">
                 <MessageCircle className="w-4 h-4" />

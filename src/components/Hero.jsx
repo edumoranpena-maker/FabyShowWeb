@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion'
-import { Sparkles, ChevronDown } from 'lucide-react'
+import { ChevronDown } from 'lucide-react'
 import WhatsAppButton from './WhatsAppButton'
 import { whatsappLink, MENSAJES, STATS } from '../data/content'
 import { useCountUp } from '../hooks/useCountUp'
@@ -48,11 +48,6 @@ export default function Hero() {
           transition={{ duration: 0.7, ease: 'easeOut' }}
           className="max-w-2xl"
         >
-          <span className="inline-flex items-center gap-2 bg-white/15 backdrop-blur-md text-white text-sm font-medium px-4 py-2 rounded-full border border-white/20 mb-6">
-            <Sparkles className="w-4 h-4 text-amarillo-300" />
-            Animación de eventos infantiles en Perú
-          </span>
-
           <h1 className="font-display text-4xl sm:text-5xl lg:text-6xl font-semibold text-white leading-[1.08] mb-5">
             Hacemos que cada cumpleaños sea un espectáculo inolvidable.
           </h1>

@@ -1,8 +1,7 @@
 import { useState, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { X, ChevronLeft, ChevronRight, Expand } from 'lucide-react'
-import { GALERIA, GALERIA_FILTROS, whatsappLink, MENSAJES } from '../data/content'
-import WhatsAppButton from './WhatsAppButton'
+import { GALERIA, GALERIA_FILTROS } from '../data/content'
 
 const alturaClase = {
   alto: 'row-span-2',
@@ -82,12 +81,6 @@ export default function Galeria() {
             ))}
           </AnimatePresence>
         </motion.div>
-
-        <div className="flex justify-center mt-12">
-          <WhatsAppButton href={whatsappLink(MENSAJES.galeria)}>
-            Quiero un evento así
-          </WhatsAppButton>
-        </div>
       </div>
 
       <AnimatePresence>

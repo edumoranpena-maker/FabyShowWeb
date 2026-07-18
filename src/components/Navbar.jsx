@@ -1,15 +1,24 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Menu, X, PartyPopper } from 'lucide-react'
+import { Menu, X, PartyPopper, Instagram, MessageCircle } from 'lucide-react'
 import { useScrolled } from '../hooks/useScrolled'
-import { NAV_LINKS, whatsappLink, MENSAJES } from '../data/content'
-import WhatsAppButton from './WhatsAppButton'
+import { NAV_LINKS, whatsappLink, MENSAJES, CONTACTO } from '../data/content'
+import TikTokIcon from './icons/TikTokIcon'
+
+const SOCIALS = [
+  { label: 'TikTok', href: CONTACTO.tiktok, icon: TikTokIcon },
+  { label: 'Instagram', href: CONTACTO.instagram, icon: Instagram },
+  { label: 'WhatsApp', href: whatsappLink(MENSAJES.general), icon: MessageCircle },
+]
 
 export default function Navbar() {
   const scrolled = useScrolled(30)
   const [open, setOpen] = useState(false)
 
   const textColor = scrolled ? 'text-ink' : 'text-white'
+  const socialChip = scrolled
+    ? 'bg-ink/5 text-ink hover:bg-fucsia-50 hover:text-fucsia-600'
+    : 'bg-white/15 text-white hover:bg-white/25'
 
   return (
     <header
@@ -37,20 +46,29 @@ export default function Navbar() {
               {link.label}
             </a>
           ))}
-        </div>
 
-        <div className="hidden lg:block">
-          <WhatsAppButton href={whatsappLink(MENSAJES.general)} size="sm">
-            Cotizar
-          </WhatsAppButton>
+          <div className="flex items-center gap-2 pl-2 border-l border-current/15">
+            {SOCIALS.map((s) => (
+              <a
+                key={s.label}
+                href={s.href}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label={s.label}
+                className={`w-9 h-9 rounded-full flex items-center justify-center transition-colors duration-300 ${socialChip}`}
+              >
+                <s.icon className="w-4 h-4" />
+              </a>
+            ))}
+          </div>
         </div>
 
         <button
           aria-label="Abrir menú"
           onClick={() => setOpen(true)}
-          className={`lg:hidden p-2 rounded-xl ${scrolled ? 'text-ink' : 'text-white'}`}
+          className="lg:hidden flex items-center justify-center w-11 h-11 rounded-full bg-white text-ink shadow-card"
         >
-          <Menu className="w-7 h-7" />
+          <Menu className="w-6 h-6" />
         </button>
       </nav>
 
@@ -87,10 +105,21 @@ export default function Navbar() {
                   {link.label}
                 </a>
               ))}
-              <div className="mt-4">
-                <WhatsAppButton href={whatsappLink(MENSAJES.general)} className="w-full">
-                  Cotizar por WhatsApp
-                </WhatsAppButton>
+
+              <div className="flex items-center gap-3 mt-6 pt-6 border-t border-ink/10">
+                {SOCIALS.map((s) => (
+                  <a
+                    key={s.label}
+                    href={s.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label={s.label}
+                    onClick={() => setOpen(false)}
+                    className="w-11 h-11 rounded-full bg-morado-50 text-morado-600 flex items-center justify-center hover:bg-fucsia-50 hover:text-fucsia-600 transition-colors"
+                  >
+                    <s.icon className="w-5 h-5" />
+                  </a>
+                ))}
               </div>
             </motion.div>
           </motion.div>
