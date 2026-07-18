@@ -30,6 +30,13 @@ export const STATS = [
   { value: 9, suffix: '', label: 'años de experiencia' },
 ]
 
+// Fotos del carrusel cinematográfico del Hero. Reemplaza por fotos reales de eventos.
+export const HERO_GALLERY = [
+  'https://images.unsplash.com/photo-1530103862676-de8c9debad1d?q=80&w=1600&auto=format&fit=crop',
+  'https://images.unsplash.com/photo-1533294455009-a77b7557d2d1?q=80&w=1600&auto=format&fit=crop',
+  'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?q=80&w=1600&auto=format&fit=crop',
+]
+
 export const SERVICIOS = [
   { icon: 'Drama', title: 'Animadoras', desc: 'Energía y carisma para mantener la fiesta activa de principio a fin.' },
   { icon: 'PartyPopper', title: 'Personajes infantiles', desc: 'Los favoritos de tus hijos, en vivo, listos para la foto perfecta.' },
