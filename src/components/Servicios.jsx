@@ -1,6 +1,7 @@
 import { motion } from 'framer-motion'
 import * as Icons from 'lucide-react'
 import { SERVICIOS } from '../data/content'
+import Confetti from './decor/Confetti'
 
 const container = {
   hidden: {},
@@ -24,6 +25,7 @@ const accentByIndex = [
 export default function Servicios() {
   return (
     <section id="servicios" className="relative py-20 md:py-28 mesh-bg">
+      <Confetti variant="a" />
       <div className="max-w-7xl mx-auto px-5 md:px-8">
         <div className="max-w-2xl mx-auto text-center mb-14">
           <span className="inline-block font-body text-sm font-semibold text-fucsia-600 bg-fucsia-50 px-4 py-1.5 rounded-full mb-4">

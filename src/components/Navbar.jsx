@@ -4,6 +4,7 @@ import { Menu, X, PartyPopper, Instagram, MessageCircle } from 'lucide-react'
 import { useScrolled } from '../hooks/useScrolled'
 import { NAV_LINKS, whatsappLink, MENSAJES, CONTACTO } from '../data/content'
 import TikTokIcon from './icons/TikTokIcon'
+import Confetti from './decor/Confetti'
 
 const SOCIALS = [
   { label: 'TikTok', href: CONTACTO.tiktok, icon: TikTokIcon },
@@ -103,6 +104,7 @@ export default function Navbar() {
               onClick={(e) => e.stopPropagation()}
               className="absolute right-0 top-0 h-full w-[80%] max-w-sm bg-white p-6 flex flex-col gap-2 shadow-2xl overflow-y-auto"
             >
+              <Confetti variant="b" emojis />
               <div className="flex items-center justify-between mb-6">
                 <span className="font-display font-semibold text-xl text-ink">Faby Show</span>
                 <button aria-label="Cerrar menú" onClick={() => setOpen(false)} className="p-2 rounded-xl bg-morado-50">

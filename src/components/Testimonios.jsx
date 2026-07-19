@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Star, ChevronLeft, ChevronRight, Quote, PenLine, X } from 'lucide-react'
 import { TESTIMONIOS as TESTIMONIOS_INICIALES } from '../data/content'
+import Confetti from './decor/Confetti'
 
 function EstrellasInput({ value, onChange }) {
   const [hover, setHover] = useState(0)
@@ -188,6 +189,7 @@ export default function Testimonios() {
 
   return (
     <section id="testimonios" className="relative py-20 md:py-28 bg-white overflow-hidden">
+      <Confetti variant="a" />
       <div className="max-w-3xl mx-auto px-5 md:px-8 text-center">
         <span className="inline-block font-body text-sm font-semibold text-fucsia-600 bg-fucsia-50 px-4 py-1.5 rounded-full mb-4">
           Testimonios

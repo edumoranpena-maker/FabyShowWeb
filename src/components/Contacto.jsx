@@ -3,10 +3,12 @@ import { Instagram, Clock, MapPin, MessageCircle } from 'lucide-react'
 import { CONTACTO, whatsappLink, MENSAJES } from '../data/content'
 import WhatsAppButton from './WhatsAppButton'
 import TikTokIcon from './icons/TikTokIcon'
+import Confetti from './decor/Confetti'
 
 export default function Contacto() {
   return (
     <section id="contacto" className="relative py-20 md:py-28 bg-white">
+      <Confetti variant="a" />
       <div className="max-w-7xl mx-auto px-5 md:px-8">
         <div className="max-w-2xl mx-auto text-center mb-14">
           <span className="inline-block font-body text-sm font-semibold text-morado-600 bg-morado-50 px-4 py-1.5 rounded-full mb-4">

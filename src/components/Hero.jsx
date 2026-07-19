@@ -50,7 +50,7 @@ export default function Hero() {
           transition={{ duration: 0.7, delay: 0.15, ease: 'easeOut' }}
           className="max-w-2xl"
         >
-          <div className="flex flex-col sm:flex-row gap-4 mb-14">
+          <div className="flex flex-col gap-4 mb-14 items-start">
             <WhatsAppButton href={whatsappLink(MENSAJES.general)} size="lg">
               Cotizar por WhatsApp
             </WhatsAppButton>
@@ -59,9 +59,20 @@ export default function Hero() {
               variant="outline"
               size="lg"
               icon={false}
+              external={false}
               className="!bg-white/10"
             >
               Ver nuestros eventos
+            </WhatsAppButton>
+            <WhatsAppButton
+              href="#paquetes"
+              variant="outline"
+              size="lg"
+              icon={false}
+              external={false}
+              className="!bg-white/10"
+            >
+              Ver nuestros planes
             </WhatsAppButton>
           </div>
 

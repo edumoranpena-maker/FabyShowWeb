@@ -1,9 +1,11 @@
 import { motion } from 'framer-motion'
 import { PASOS } from '../data/content'
+import Confetti from './decor/Confetti'
 
 export default function ComoTrabajamos() {
   return (
     <section id="como-trabajamos" className="relative py-20 md:py-28 bg-party-gradient-soft">
+      <Confetti variant="a" />
       <div className="max-w-5xl mx-auto px-5 md:px-8">
         <div className="max-w-2xl mx-auto text-center mb-16">
           <span className="inline-block font-body text-sm font-semibold text-celeste-700 bg-celeste-100 px-4 py-1.5 rounded-full mb-4">

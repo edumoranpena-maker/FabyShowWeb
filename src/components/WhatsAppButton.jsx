@@ -6,6 +6,13 @@ import { motion } from 'framer-motion'
  * variant: 'primary' | 'secondary' | 'outline'
  * size: 'lg' | 'md' | 'sm'
  */
+/**
+ * Botón de WhatsApp reutilizable.
+ * variant: 'primary' | 'secondary' | 'outline'
+ * size: 'lg' | 'md' | 'sm'
+ * external: true (default) abre en pestaña nueva — úsalo para WhatsApp.
+ *           false navega en la misma página — úsalo para anclas internas (#galeria, #paquetes, etc.)
+ */
 export default function WhatsAppButton({
   href,
   children = 'Cotizar por WhatsApp',
@@ -13,6 +20,7 @@ export default function WhatsAppButton({
   size = 'lg',
   className = '',
   icon = true,
+  external = true,
 }) {
   const base =
     'inline-flex items-center justify-center gap-2 font-body font-semibold rounded-full transition-all duration-300 focus-visible:outline-celeste-400'
@@ -35,8 +43,7 @@ export default function WhatsAppButton({
   return (
     <motion.a
       href={href}
-      target="_blank"
-      rel="noopener noreferrer"
+      {...(external ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
       whileTap={{ scale: 0.96 }}
       className={`${base} ${sizes[size]} ${variants[variant]} ${className}`}
     >

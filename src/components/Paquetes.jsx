@@ -1,12 +1,14 @@
 import { motion } from 'framer-motion'
-import { Check, Clock, Crown } from 'lucide-react'
+import { Check, Clock, Crown, Sparkles } from 'lucide-react'
 import WhatsAppButton from './WhatsAppButton'
 import { PAQUETES, whatsappLink, MENSAJES } from '../data/content'
+import Confetti from './decor/Confetti'
 
 export default function Paquetes() {
   return (
     <section id="paquetes" className="relative py-20 md:py-28 bg-white overflow-hidden">
       <div className="absolute top-0 right-0 w-96 h-96 bg-morado-100/60 rounded-full blur-3xl -z-0" />
+      <Confetti variant="b" />
 
       <div className="relative max-w-7xl mx-auto px-5 md:px-8">
         <div className="max-w-2xl mx-auto text-center mb-14">
@@ -21,8 +23,10 @@ export default function Paquetes() {
           </p>
         </div>
 
-        <div className="grid md:grid-cols-3 gap-6 lg:gap-8 items-start">
-          {PAQUETES.map((p, i) => (
+        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6 items-start">
+          {PAQUETES.map((p, i) => {
+            const esPersonalizable = p.nombre === 'Plan Personalizable'
+            return (
             <motion.div
               key={p.nombre}
               initial={{ opacity: 0, y: 30 }}
@@ -35,6 +39,12 @@ export default function Paquetes() {
                 <div className="absolute -top-4 left-1/2 -translate-x-1/2 flex items-center gap-1.5 bg-amarillo-400 text-ink text-xs font-bold px-4 py-1.5 rounded-full shadow-md">
                   <Crown className="w-3.5 h-3.5" />
                   MÁS ELEGIDO
+                </div>
+              )}
+              {esPersonalizable && (
+                <div className="absolute -top-4 left-1/2 -translate-x-1/2 flex items-center gap-1.5 bg-celeste-400 text-ink text-xs font-bold px-4 py-1.5 rounded-full shadow-md">
+                  <Sparkles className="w-3.5 h-3.5" />
+                  A TU MEDIDA
                 </div>
               )}
 
@@ -65,14 +75,15 @@ export default function Paquetes() {
               </ul>
 
               <WhatsAppButton
-                href={whatsappLink(MENSAJES.paquete(p.nombre))}
+                href={whatsappLink(esPersonalizable ? MENSAJES.personalizado : MENSAJES.paquete(p.nombre))}
                 variant="primary"
                 className="w-full"
               >
-                Reservar por WhatsApp
+                {esPersonalizable ? 'Cotizar mi plan por WhatsApp' : 'Reservar por WhatsApp'}
               </WhatsAppButton>
             </motion.div>
-          ))}
+            )
+          })}
         </div>
       </div>
     </section>
