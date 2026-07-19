@@ -12,14 +12,15 @@ export const whatsappLink = (mensaje) =>
 export const MENSAJES = {
   general: 'Hola Faby Show 👋 Quiero cotizar una animación para un evento infantil.',
   paquete: (nombre) => `Hola Faby Show 👋 Quiero reservar el ${nombre}. ¿Me ayudan con la disponibilidad?`,
+  personalizado: 'Hola Faby Show 👋 Quiero armar un plan a mi medida para mi evento. ¿Me ayudan a cotizarlo?',
   galeria: 'Hola Faby Show 👋 Vi su galería y quiero un evento así de espectacular. ¿Cotizamos?',
 }
 
 export const NAV_LINKS = [
   { label: 'Inicio', href: '#hero' },
   { label: 'Servicios', href: '#servicios' },
-  { label: 'Paquetes', href: '#paquetes' },
   { label: 'Galería', href: '#galeria' },
+  { label: 'Paquetes', href: '#paquetes' },
   { label: 'Testimonios', href: '#testimonios' },
   { label: 'Contacto', href: '#contacto' },
 ]
@@ -51,6 +52,18 @@ export const SERVICIOS = [
 ]
 
 export const PAQUETES = [
+  {
+    nombre: 'Plan Personalizable',
+    duracion: 'A tu medida',
+    precio: 'Cotización a medida',
+    destacado: false,
+    incluye: [
+      'Tú eliges los servicios que quieres combinar',
+      'Adaptamos duración y aforo a tu evento',
+      'Ideal si buscas algo distinto a un paquete fijo',
+      'Te asesoramos por WhatsApp para armarlo juntos',
+    ],
+  },
   {
     nombre: 'Plan Básico',
     duracion: '1.5 horas',
