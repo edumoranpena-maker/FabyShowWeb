@@ -8,10 +8,12 @@ const TEXT_MS = 3200 // blur + overlay + texto visible
 const TRANSITION_MS = 900 // crossfade + zoom hacia el siguiente slide
 const TOTAL_MS = SHARP_MS + TEXT_MS + TRANSITION_MS
 
-export default function HeroGallery({ headline }) {
+export default function HeroGallery({ headline, subtitle }) {
   const [index, setIndex] = useState(0)
   const [blurred, setBlurred] = useState(false)
   const [showText, setShowText] = useState(false)
+  // 0 = turno del titulo, 1 = turno del subtitulo. Alternan en cada slide.
+  const [textTurn, setTextTurn] = useState(0)
   const reduceMotion = useReducedMotion()
 
   // Precarga las 3 imágenes para evitar parpadeos al iniciar el ciclo
@@ -41,6 +43,7 @@ export default function HeroGallery({ headline }) {
 
     const t3 = setTimeout(() => {
       setIndex((i) => (i + 1) % HERO_GALLERY.length)
+      setTextTurn((t) => (t + 1) % 2)
     }, TOTAL_MS)
 
     return () => {
@@ -52,6 +55,7 @@ export default function HeroGallery({ headline }) {
 
   const totalS = TOTAL_MS / 1000
   const transitionS = TRANSITION_MS / 1000
+  const currentText = textTurn === 0 ? headline : subtitle
 
   return (
     <div className="relative w-full h-full">
@@ -87,29 +91,35 @@ export default function HeroGallery({ headline }) {
         )
       })}
 
-      {/* scrim permanente inferior, para legibilidad base */}
-      <div className="absolute inset-0 bg-gradient-to-t from-ink/70 via-ink/5 to-transparent pointer-events-none" />
-
-      {/* overlay oscuro dinámico que aparece junto con el blur */}
+      {/* Oscurece unicamente la franja inferior donde aparece el texto,
+          no la imagen completa. Siempre tiene una presencia sutil (0.3)
+          para legibilidad base, y sube a 1 cuando el texto esta activo. */}
       <div
-        className="absolute inset-0 bg-ink pointer-events-none"
-        style={{ opacity: blurred ? 0.45 : 0, transition: 'opacity 700ms ease' }}
+        className="absolute inset-x-0 bottom-0 h-[60%] sm:h-[54%] bg-gradient-to-t from-ink via-ink/55 to-transparent pointer-events-none"
+        style={{ opacity: blurred ? 1 : 0.3, transition: 'opacity 700ms ease' }}
       />
 
-      {/* headline sincronizado con la fase de blur de cada slide */}
       <div className="absolute inset-0 flex items-end p-6 sm:p-8 md:p-10 lg:p-14">
-        <AnimatePresence>
+        <AnimatePresence mode="wait">
           {showText && (
-            <motion.h1
-              key="hero-headline"
+            <motion.div
+              key={`hero-text-${textTurn}`}
               initial={{ opacity: 0, y: 28 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -18 }}
               transition={{ duration: 0.7, ease: 'easeOut' }}
-              className="font-display text-3xl sm:text-4xl lg:text-5xl font-semibold text-white leading-[1.1] max-w-2xl"
+              className="max-w-2xl"
             >
-              {headline}
-            </motion.h1>
+              {textTurn === 0 ? (
+                <p className="font-display text-3xl sm:text-4xl lg:text-5xl font-semibold text-white leading-[1.1]">
+                  {currentText}
+                </p>
+              ) : (
+                <p className="font-body text-lg sm:text-xl text-white/90 leading-relaxed max-w-xl">
+                  {currentText}
+                </p>
+              )}
+            </motion.div>
           )}
         </AnimatePresence>
       </div>

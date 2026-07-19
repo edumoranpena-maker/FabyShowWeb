@@ -15,9 +15,12 @@ export default function Contacto() {
           <h2 className="font-display text-3xl md:text-4xl font-semibold text-ink mb-4">
             Hablemos de tu evento
           </h2>
-          <p className="font-body text-ink/60">
+          <p className="font-body text-ink/60 mb-6">
             Escríbenos y te ayudamos a armar la fiesta perfecta.
           </p>
+          <WhatsAppButton href={whatsappLink(MENSAJES.general)}>
+            Cotizar por WhatsApp
+          </WhatsAppButton>
         </div>
 
         <motion.div
@@ -76,10 +79,6 @@ export default function Contacto() {
               <MessageCircle className="w-5 h-5" />
             </a>
           </div>
-
-          <WhatsAppButton href={whatsappLink(MENSAJES.general)} className="w-full mt-2">
-            Cotizar por WhatsApp
-          </WhatsAppButton>
         </motion.div>
       </div>
     </section>

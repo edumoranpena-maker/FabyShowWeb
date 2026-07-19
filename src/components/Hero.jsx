@@ -4,6 +4,10 @@ import HeroGallery from './HeroGallery'
 import { whatsappLink, MENSAJES, STATS } from '../data/content'
 import { useCountUp } from '../hooks/useCountUp'
 
+const HEADLINE = 'Hacemos que cada cumpleaños sea un espectáculo inolvidable.'
+const SUBTITLE =
+  'Animadoras, personajes, DJ y shows en vivo con un equipo profesional que se encarga de todo, para que tú solo disfrutes la fiesta.'
+
 function Stat({ value, suffix, label }) {
   const { ref, value: current } = useCountUp(value)
   return (
@@ -25,14 +29,18 @@ export default function Hero() {
       <div className="absolute bottom-10 -left-16 w-72 h-72 bg-celeste-400/15 blur-3xl rounded-full animate-blob" />
 
       <div className="relative z-10 max-w-7xl mx-auto px-5 md:px-8">
-        {/* Galería cinematográfica: nítida -> blur + overlay -> titular -> crossfade/zoom al siguiente slide */}
+        {/* Encabezado real para SEO/lectores de pantalla; el titular visible
+            vive dentro de la galería y se anima junto con el subtítulo. */}
+        <h1 className="sr-only">{HEADLINE}</h1>
+
+        {/* Galería cinematográfica: nítida -> blur + overlay -> titular/subtítulo -> crossfade/zoom */}
         <motion.div
           initial={{ opacity: 0, y: 24 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.7, ease: 'easeOut' }}
           className="relative rounded-4xl overflow-hidden shadow-glow h-[420px] sm:h-[480px] md:h-[520px] lg:h-[600px] mb-10 lg:mb-12"
         >
-          <HeroGallery headline="Hacemos que cada cumpleaños sea un espectáculo inolvidable." />
+          <HeroGallery headline={HEADLINE} subtitle={SUBTITLE} />
         </motion.div>
 
         {/* Contenido estático debajo de la galería */}
@@ -42,10 +50,6 @@ export default function Hero() {
           transition={{ duration: 0.7, delay: 0.15, ease: 'easeOut' }}
           className="max-w-2xl"
         >
-          <p className="font-body text-lg text-white/85 mb-9 max-w-xl">
-            Animadoras, personajes, DJ y shows en vivo con un equipo profesional que se encarga de todo, para que tú solo disfrutes la fiesta.
-          </p>
-
           <div className="flex flex-col sm:flex-row gap-4 mb-14">
             <WhatsAppButton href={whatsappLink(MENSAJES.general)} size="lg">
               Cotizar por WhatsApp

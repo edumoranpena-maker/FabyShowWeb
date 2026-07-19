@@ -7,7 +7,7 @@ export default function FAQ() {
   const [open, setOpen] = useState(0)
 
   return (
-    <section className="relative py-20 md:py-28 mesh-bg">
+    <section id="faq" className="relative py-20 md:py-28 mesh-bg">
       <div className="max-w-3xl mx-auto px-5 md:px-8">
         <div className="text-center mb-14">
           <span className="inline-block font-body text-sm font-semibold text-celeste-700 bg-celeste-100 px-4 py-1.5 rounded-full mb-4">

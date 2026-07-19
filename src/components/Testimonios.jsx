@@ -31,6 +31,7 @@ function EstrellasInput({ value, onChange }) {
 function ModalResena({ onClose, onSubmit }) {
   const [nombre, setNombre] = useState('')
   const [contacto, setContacto] = useState('')
+  const [evento, setEvento] = useState('')
   const [texto, setTexto] = useState('')
   const [estrellas, setEstrellas] = useState(5)
   const [error, setError] = useState('')
@@ -43,7 +44,7 @@ function ModalResena({ onClose, onSubmit }) {
     }
     onSubmit({
       nombre: nombre.trim(),
-      evento: contacto.trim() ? contacto.trim() : 'Cliente Faby Show',
+      evento: evento.trim() ? evento.trim() : 'Cliente Faby Show',
       texto: texto.trim(),
       estrellas,
       foto: null,
@@ -110,6 +111,20 @@ function ModalResena({ onClose, onSubmit }) {
             onChange={(e) => setContacto(e.target.value)}
             type="text"
             placeholder="correo@ejemplo.com o 999 999 999"
+            className="w-full rounded-xl border border-ink/10 px-4 py-3 font-body text-sm focus:border-fucsia-400 focus:ring-2 focus:ring-fucsia-100 outline-none transition-all"
+          />
+        </div>
+
+        <div>
+          <label htmlFor="resena-evento" className="font-body text-sm font-medium text-ink/70 mb-1.5 block">
+            ¿En qué evento nos viste?
+          </label>
+          <input
+            id="resena-evento"
+            value={evento}
+            onChange={(e) => setEvento(e.target.value)}
+            type="text"
+            placeholder="Cumpleaños de Zoe, 2 años"
             className="w-full rounded-xl border border-ink/10 px-4 py-3 font-body text-sm focus:border-fucsia-400 focus:ring-2 focus:ring-fucsia-100 outline-none transition-all"
           />
         </div>
