@@ -57,3 +57,16 @@ textarea:focus-visible {
 /* custom scrollbar for gallery filter row */
 .no-scrollbar::-webkit-scrollbar { display: none; }
 .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+/* Parpadeo del boton flotante de WhatsApp: 3 pulsos y se detiene.
+   Se dispara de nuevo remontando el elemento (cambiando su key) cada
+   vez que cambia la seccion activa — ver WhatsAppFloat.jsx */
+@keyframes whatsapp-blink {
+  0%, 100% { transform: scale(1); opacity: 0; }
+  50% { transform: scale(1.35); opacity: 0.55; }
+}
+.whatsapp-blink {
+  opacity: 0;
+  animation: whatsapp-blink 0.7s ease-in-out 3;
+  animation-fill-mode: forwards;
+}
