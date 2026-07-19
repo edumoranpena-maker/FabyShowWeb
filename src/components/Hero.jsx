@@ -11,7 +11,7 @@ const SUBTITLE =
 function Stat({ value, suffix, label }) {
   const { ref, value: current } = useCountUp(value)
   return (
-    <div ref={ref} className="flex flex-col items-center lg:items-start">
+    <div ref={ref} className="flex flex-col items-center">
       <span className="font-display text-3xl md:text-4xl text-white font-semibold tabular-nums">
         {current.toLocaleString('es-PE')}
         {suffix}
@@ -43,14 +43,14 @@ export default function Hero() {
           <HeroGallery headline={HEADLINE} subtitle={SUBTITLE} />
         </motion.div>
 
-        {/* Contenido estático debajo de la galería */}
+        {/* Contenido estático debajo de la galería, centrado */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.7, delay: 0.15, ease: 'easeOut' }}
-          className="max-w-2xl"
+          className="max-w-2xl mx-auto flex flex-col items-center text-center"
         >
-          <div className="flex flex-col gap-4 mb-14 items-start">
+          <div className="flex flex-col gap-4 mb-14 items-center">
             <WhatsAppButton href={whatsappLink(MENSAJES.general)} size="lg">
               Cotizar por WhatsApp
             </WhatsAppButton>
@@ -76,7 +76,7 @@ export default function Hero() {
             </WhatsAppButton>
           </div>
 
-          <div className="grid grid-cols-3 gap-6 max-w-lg border-t border-white/20 pt-7">
+          <div className="grid grid-cols-3 gap-6 max-w-lg mx-auto border-t border-white/20 pt-7">
             {STATS.map((s) => (
               <Stat key={s.label} {...s} />
             ))}

@@ -29,7 +29,7 @@ export default function Galeria() {
 
   return (
     <section id="galeria" className="relative py-20 md:py-28 bg-ink">
-      <Confetti variant="b" />
+      <Confetti variant="c" />
       <div className="max-w-7xl mx-auto px-5 md:px-8">
         <div className="max-w-2xl mx-auto text-center mb-10">
           <span className="inline-block font-body text-sm font-semibold text-amarillo-300 bg-white/10 px-4 py-1.5 rounded-full mb-4">

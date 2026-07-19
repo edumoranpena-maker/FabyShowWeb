@@ -189,7 +189,7 @@ export default function Testimonios() {
 
   return (
     <section id="testimonios" className="relative py-20 md:py-28 bg-white overflow-hidden">
-      <Confetti variant="a" />
+      <Confetti variant="c" />
       <div className="max-w-3xl mx-auto px-5 md:px-8 text-center">
         <span className="inline-block font-body text-sm font-semibold text-fucsia-600 bg-fucsia-50 px-4 py-1.5 rounded-full mb-4">
           Testimonios
