@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Menu, X, PartyPopper, Instagram, MessageCircle } from 'lucide-react'
+import { Menu, X, Instagram, MessageCircle } from 'lucide-react'
 import { useScrolled } from '../hooks/useScrolled'
 import { NAV_LINKS, whatsappLink, MENSAJES, CONTACTO } from '../data/content'
 import TikTokIcon from './icons/TikTokIcon'
@@ -41,11 +41,17 @@ export default function Navbar() {
         }`}
       >
         <nav className="max-w-7xl mx-auto px-5 md:px-8 flex items-center justify-between">
-          <a href="#hero" className="flex items-center gap-2 font-display font-semibold text-xl md:text-2xl">
-            <span className="flex items-center justify-center w-10 h-10 rounded-2xl bg-party-gradient text-white shadow-glow">
-              <PartyPopper className="w-5 h-5" />
-            </span>
-            <span className={textColor}>Faby Show</span>
+          <a href="#hero" className="flex items-center gap-2">
+            <img
+              src="/avatar-faby-show.png"
+              alt=""
+              className="w-10 h-10 rounded-full object-cover shadow-glow"
+            />
+            <img
+              src="/logo-faby-show.png"
+              alt="Faby Show"
+              className="h-8 md:h-10 w-auto"
+            />
           </a>
 
           <div className="hidden lg:flex items-center gap-8">
@@ -106,7 +112,14 @@ export default function Navbar() {
             >
               <Confetti variant="b" />
               <div className="flex items-center justify-between mb-6">
-                <span className="font-display font-semibold text-xl text-ink">Faby Show</span>
+                <div className="flex items-center gap-2.5">
+                  <img
+                    src="/avatar-faby-show.png"
+                    alt="Faby Show"
+                    className="w-10 h-10 rounded-full object-cover shadow-card"
+                  />
+                  <span className="font-display font-semibold text-lg text-ink">Eventos Faby Show</span>
+                </div>
                 <button aria-label="Cerrar menú" onClick={() => setOpen(false)} className="p-2 rounded-xl bg-morado-50">
                   <X className="w-6 h-6 text-morado-700" />
                 </button>
