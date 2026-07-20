@@ -1,4 +1,4 @@
-import { PartyPopper, Instagram, MessageCircle } from 'lucide-react'
+import { Instagram, MessageCircle } from 'lucide-react'
 import { NAV_LINKS, CONTACTO, whatsappLink, MENSAJES } from '../data/content'
 import TikTokIcon from './icons/TikTokIcon'
 
@@ -10,10 +10,12 @@ export default function Footer() {
       <div className="max-w-7xl mx-auto px-5 md:px-8">
         <div className="grid md:grid-cols-4 gap-10 mb-12">
           <div className="md:col-span-2">
-            <div className="flex items-center gap-2 font-display font-semibold text-2xl mb-4">
-              <span className="flex items-center justify-center w-10 h-10 rounded-2xl bg-party-gradient text-white">
-                <PartyPopper className="w-5 h-5" />
-              </span>
+            <div className="flex items-center gap-2.5 font-display font-semibold text-2xl mb-4">
+              <img
+                src="/avatar-faby-show.png"
+                alt="Faby Show"
+                className="w-10 h-10 rounded-full object-cover"
+              />
               Faby Show
             </div>
             <p className="font-body text-sm text-white/60 max-w-sm">
