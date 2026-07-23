@@ -45,12 +45,12 @@ export default function Navbar() {
             <img
               src="/avatar-faby-show.png"
               alt=""
-              className="w-10 h-10 rounded-full object-cover shadow-glow"
+              className="w-12 h-12 md:w-14 md:h-14 rounded-full object-cover shadow-glow"
             />
             <img
               src="/logo-faby-show.png"
               alt="Faby Show"
-              className="h-12 md:h-16 w-auto"
+              className="h-14 md:h-20 w-auto"
             />
           </a>
 
