@@ -37,10 +37,10 @@ export default function Navbar() {
       */}
       <header
         className={`fixed top-0 inset-x-0 z-40 transition-all duration-500 ${
-          scrolled ? 'bg-white/85 backdrop-blur-lg shadow-card py-2' : 'bg-transparent py-3'
+          scrolled ? 'bg-white/85 backdrop-blur-lg shadow-card py-1' : 'bg-transparent py-2'
         }`}
       >
-        <nav className="max-w-7xl mx-auto px-5 md:px-8 flex items-center justify-between">
+        <nav className="max-w-7xl mx-auto px-5 md:px-8 flex items-start justify-between">
           <a href="#hero" className="flex items-center gap-2">
             <img
               src="/avatar-faby-show.png"
