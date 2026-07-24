@@ -37,7 +37,7 @@ export default function Navbar() {
       */}
       <header
         className={`fixed top-0 inset-x-0 z-40 transition-all duration-500 ${
-          scrolled ? 'bg-white/85 backdrop-blur-lg shadow-card py-3' : 'bg-transparent py-5'
+          scrolled ? 'bg-white/85 backdrop-blur-lg shadow-card py-2' : 'bg-transparent py-3'
         }`}
       >
         <nav className="max-w-7xl mx-auto px-5 md:px-8 flex items-center justify-between">
@@ -45,7 +45,7 @@ export default function Navbar() {
             <img
               src="/avatar-faby-show.png"
               alt=""
-              className="w-12 h-12 md:w-14 md:h-14 rounded-full object-cover shadow-glow"
+              className="w-10 h-10 md:w-12 md:h-12 rounded-full object-cover shadow-glow"
             />
             <img
               src="/logo-faby-show.png"

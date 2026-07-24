@@ -23,7 +23,7 @@ function Stat({ value, suffix, label }) {
 
 export default function Hero() {
   return (
-    <section id="hero" className="relative bg-ink pt-36 pb-16 md:pt-44 md:pb-24 overflow-hidden">
+    <section id="hero" className="relative bg-ink pt-32 pb-16 md:pt-40 md:pb-24 overflow-hidden">
       {/* blobs decorativos */}
       <div className="absolute -top-20 -right-20 w-72 h-72 bg-amarillo-400/20 blur-3xl rounded-full animate-blob" />
       <div className="absolute bottom-10 -left-16 w-72 h-72 bg-celeste-400/15 blur-3xl rounded-full animate-blob" />
