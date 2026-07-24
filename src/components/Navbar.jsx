@@ -50,7 +50,7 @@ export default function Navbar() {
             <img
               src="/logo-faby-show.png"
               alt="Faby Show"
-              className="h-14 md:h-20 w-auto"
+              className="h-24 md:h-32 w-auto"
             />
           </a>
 
