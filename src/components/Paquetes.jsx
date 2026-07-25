@@ -79,7 +79,7 @@ export default function Paquetes() {
                 variant="primary"
                 className="w-full"
               >
-                {esPersonalizable ? 'Cotizar mi plan por WhatsApp' : 'Reservar por WhatsApp'}
+                {esPersonalizable ? 'Cotizar por WhatsApp' : 'Reservar por WhatsApp'}
               </WhatsAppButton>
             </motion.div>
             )

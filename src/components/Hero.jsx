@@ -1,8 +1,11 @@
-import { motion } from 'framer-motion'
+import { useCallback, useState } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import WhatsAppButton from './WhatsAppButton'
 import HeroGallery from './HeroGallery'
-import { whatsappLink, MENSAJES, STATS } from '../data/content'
+import { whatsappLink, MENSAJES, STATS, HERO_GALLERY } from '../data/content'
 import { useCountUp } from '../hooks/useCountUp'
+import { useImagePalettes } from '../hooks/useImagePalettes'
+import { FALLBACK_GRADIENT } from '../lib/colorExtraction'
 
 const HEADLINE = 'Hacemos que cada cumpleaños sea un espectáculo inolvidable.'
 const SUBTITLE =
@@ -22,8 +25,36 @@ function Stat({ value, suffix, label }) {
 }
 
 export default function Hero() {
+  // Paleta/gradiente de cada foto del carrusel — se calcula una sola vez
+  // (con cache persistente) y se reutiliza cada vez que esa foto vuelve
+  // a estar activa. Ver src/lib/colorExtraction.js para el detalle.
+  const palettes = useImagePalettes(HERO_GALLERY)
+  const [activeSrc, setActiveSrc] = useState(HERO_GALLERY[0])
+
+  const handleActiveChange = useCallback((src) => setActiveSrc(src), [])
+
   return (
     <section id="hero" className="relative bg-ink pt-24 pb-16 md:pt-36 md:pb-24 overflow-hidden">
+      {/* Fondo ambiental: un gradiente distinto por cada foto del carrusel,
+          generado automáticamente a partir de sus colores dominantes.
+          Se apilan todos los gradientes superpuestos y se hace crossfade
+          entre ellos según cuál imagen está activa — mismo patrón que el
+          crossfade de las fotos en HeroGallery, pero para el fondo. */}
+      <div className="absolute inset-0">
+        <div className="absolute inset-0 bg-ink" />
+        <AnimatePresence>
+          <motion.div
+            key={activeSrc}
+            className="absolute inset-0"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 1.8, ease: 'easeInOut' }}
+            style={{ background: palettes[activeSrc]?.gradient ?? FALLBACK_GRADIENT }}
+          />
+        </AnimatePresence>
+      </div>
+
       {/* blobs decorativos */}
       <div className="absolute -top-20 -right-20 w-72 h-72 bg-amarillo-400/20 blur-3xl rounded-full animate-blob" />
       <div className="absolute bottom-10 -left-16 w-72 h-72 bg-celeste-400/15 blur-3xl rounded-full animate-blob" />
@@ -40,7 +71,7 @@ export default function Hero() {
           transition={{ duration: 0.7, ease: 'easeOut' }}
           className="relative rounded-4xl overflow-hidden shadow-glow h-[420px] sm:h-[480px] md:h-[520px] lg:h-[600px] mb-10 lg:mb-12"
         >
-          <HeroGallery headline={HEADLINE} subtitle={SUBTITLE} />
+          <HeroGallery headline={HEADLINE} subtitle={SUBTITLE} onActiveChange={handleActiveChange} />
         </motion.div>
 
         {/* Contenido estático debajo de la galería, centrado */}

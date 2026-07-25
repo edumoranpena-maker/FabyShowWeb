@@ -8,7 +8,7 @@ const TEXT_MS = 3200 // blur + overlay + texto visible
 const TRANSITION_MS = 900 // crossfade + zoom hacia el siguiente slide
 const TOTAL_MS = SHARP_MS + TEXT_MS + TRANSITION_MS
 
-export default function HeroGallery({ headline, subtitle }) {
+export default function HeroGallery({ headline, subtitle, onActiveChange }) {
   const [index, setIndex] = useState(0)
   const [blurred, setBlurred] = useState(false)
   const [showText, setShowText] = useState(false)
@@ -23,6 +23,13 @@ export default function HeroGallery({ headline, subtitle }) {
       img.src = src
     })
   }, [])
+
+  // Avisa al padre (Hero.jsx) cual imagen esta activa, para que pueda
+  // sincronizar el fondo ambiental con el slide visible — incluye el
+  // valor inicial al montar, no solo los cambios posteriores.
+  useEffect(() => {
+    onActiveChange?.(HERO_GALLERY[index])
+  }, [index, onActiveChange])
 
   useEffect(() => {
     if (reduceMotion) {
