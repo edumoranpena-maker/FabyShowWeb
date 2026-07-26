@@ -1,31 +1,16 @@
-import Navbar from './components/Navbar'
-import Hero from './components/Hero'
-import Servicios from './components/Servicios'
-import Paquetes from './components/Paquetes'
-import Galeria from './components/Galeria'
-import ComoTrabajamos from './components/ComoTrabajamos'
-import Testimonios from './components/Testimonios'
-import FAQ from './components/FAQ'
-import Contacto from './components/Contacto'
-import Footer from './components/Footer'
-import WhatsAppFloat from './components/WhatsAppFloat'
+import { Routes, Route } from 'react-router-dom'
+import MarketingSite from './marketing/MarketingSite'
+import AdminApp from './admin/AdminApp'
 
+// Punto de entrada de rutas de toda la app: el sitio público vive en "/",
+// y todo el panel de administración (login incluido) vive bajo "/admin/*",
+// completamente aislado en su propio sub-árbol de rutas y su propio
+// AuthProvider (ver src/admin/AdminApp.jsx).
 export default function App() {
   return (
-    <div className="overflow-x-hidden">
-      <Navbar />
-      <main>
-        <Hero />
-        <Servicios />
-        <Galeria />
-        <Paquetes />
-        <ComoTrabajamos />
-        <Testimonios />
-        <FAQ />
-        <Contacto />
-      </main>
-      <Footer />
-      <WhatsAppFloat />
-    </div>
+    <Routes>
+      <Route path="/admin/*" element={<AdminApp />} />
+      <Route path="/*" element={<MarketingSite />} />
+    </Routes>
   )
 }
