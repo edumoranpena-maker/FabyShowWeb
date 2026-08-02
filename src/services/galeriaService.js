@@ -1,5 +1,20 @@
-import { createContentService } from './contentService'
+import { createContentService, uploadContentFile, removeContentFile } from './contentService'
 
-// CRUD de las fotos/videos de la Galería. Tabla sugerida: "galeria_items"
-// (columnas: id, categoria, tipo, src, created_at).
-export const galeriaService = createContentService('galeria_items')
+const TABLE = 'faby_galeria_items'
+const BUCKET = 'faby_galeria'
+
+const base = createContentService(TABLE)
+
+export const galeriaService = {
+  ...base,
+
+  /** Sube una foto o video nuevo al bucket de la Galería. */
+  async uploadMedia(file) {
+    const path = `${Date.now()}-${file.name}`
+    return uploadContentFile(BUCKET, path, file)
+  },
+
+  async removeMedia(path) {
+    return removeContentFile(BUCKET, path)
+  },
+}

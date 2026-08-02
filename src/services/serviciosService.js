@@ -1,5 +1,5 @@
 import { createContentService } from './contentService'
 
-// CRUD de las tarjetas de Servicios. Tabla sugerida: "servicios"
-// (columnas: id, icon, title, desc, orden, created_at).
-export const serviciosService = createContentService('servicios')
+// Las tarjetas de Servicios usan nombres de icono de lucide-react (texto),
+// no imágenes subidas — no necesita bucket de Storage.
+export const serviciosService = createContentService('faby_servicios')

@@ -1,20 +1,12 @@
 // ============================================================================
-// Fábrica de servicios de contenido — el patrón que va a usar CADA sección
+// Fábrica de servicios de contenido — el patrón que usa cada sección
 // editable del CMS (Hero, Galería, Servicios, Paquetes, Testimonios, FAQ,
-// Contacto) para hablar con Supabase Database (y Storage, cuando aplique).
-//
-// Por qué una fábrica en vez de un archivo por sección escrito a mano:
-// todas las secciones necesitan las mismas 5 operaciones (listar, obtener
-// una, crear, actualizar, eliminar). Centralizar esa lógica acá significa
-// que conectar Supabase es escribir el cuerpo de ESTAS funciones una sola
-// vez — cada servicio de sección (ver src/services/heroService.js, etc.)
-// ya está escrito y no necesita tocarse.
+// Contacto) para hablar con Supabase Database y Storage.
 //
 // Estado actual (sin Supabase conectado): cada método lanza un error
 // explícito y descriptivo en vez de fallar en silencio o devolver datos
 // falsos — así cualquier vista que intente usarlos hoy muestra con
-// claridad que la conexión todavía está pendiente, en vez de comportarse
-// de forma inconsistente.
+// claridad que la conexión todavía está pendiente.
 // ============================================================================
 
 import { supabase, isSupabaseConfigured } from '../lib/supabaseClient'
@@ -28,14 +20,15 @@ function notConfiguredError(table) {
 
 /**
  * Crea el servicio CRUD para una tabla de Supabase.
- * @param {string} table - nombre de la tabla en Supabase (ej. "hero_slides")
+ * @param {string} table - nombre de la tabla en Supabase (ej. "faby_hero_slides")
+ * @param {string} orderBy - columna por la que ordenar getAll() (default: "orden")
  */
-export function createContentService(table) {
+export function createContentService(table, orderBy = 'orden') {
   return {
-    /** Lista todos los registros de la tabla. */
+    /** Lista todos los registros de la tabla, ordenados. */
     async getAll() {
       if (!isSupabaseConfigured) throw notConfiguredError(table)
-      const { data, error } = await supabase.from(table).select('*').order('created_at')
+      const { data, error } = await supabase.from(table).select('*').order(orderBy)
       if (error) throw error
       return data
     },
@@ -75,8 +68,8 @@ export function createContentService(table) {
 
 /**
  * Sube un archivo a un bucket de Supabase Storage y devuelve su URL
- * pública. Pensado para las imágenes/videos de Hero y Galería.
- * @param {string} bucket - nombre del bucket (ej. "hero-gallery")
+ * pública. Pensado para las imágenes de Hero, Galería y Testimonios.
+ * @param {string} bucket - nombre del bucket (ej. "faby_hero")
  * @param {string} path - ruta dentro del bucket (ej. "slide-1.jpg")
  * @param {File} file
  */
@@ -91,4 +84,11 @@ export async function uploadContentFile(bucket, path, file) {
 
   const { data } = supabase.storage.from(bucket).getPublicUrl(path)
   return data.publicUrl
+}
+
+/** Elimina un archivo de un bucket de Storage. */
+export async function removeContentFile(bucket, path) {
+  if (!isSupabaseConfigured) throw notConfiguredError(`storage:${bucket}`)
+  const { error } = await supabase.storage.from(bucket).remove([path])
+  if (error) throw error
 }
