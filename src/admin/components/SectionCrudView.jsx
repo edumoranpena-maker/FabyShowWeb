@@ -156,7 +156,7 @@ export default function SectionCrudView({
       ) : (
         <div className="grid gap-3">
           {displayItems.map((item) => {
-            const thumb = item.image_url || item.src || item.foto_url
+            const thumb = item.image_url || item.src || item.foto_url || item.imagen_url
             return (
               <div
                 key={item.id}
