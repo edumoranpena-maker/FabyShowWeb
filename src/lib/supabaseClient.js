@@ -1,36 +1,33 @@
 // ============================================================================
-// Cliente de Supabase — placeholder listo para activarse.
+// Cliente de Supabase — activo.
 //
 // Este archivo es a propósito el ÚNICO lugar de todo el proyecto que sabe
 // cómo se construye el cliente de Supabase. Auth, Database y Storage se
 // consumen siempre a través de las capas de servicio (src/auth/authService.js,
 // src/services/*.js), nunca importando este cliente directamente desde
-// componentes de UI. Esto es lo que permite conectar Supabase sin tocar
-// nada de la capa visual.
+// componentes de UI.
 //
-// Para activarlo:
-// 1. `npm install` (ya incluye @supabase/supabase-js en package.json)
-// 2. Crear un archivo `.env.local` en la raíz del proyecto con:
-//      VITE_SUPABASE_URL=https://tu-proyecto.supabase.co
-//      VITE_SUPABASE_ANON_KEY=tu-anon-key
-// 3. Descomentar el bloque de abajo (y borrar el `export const supabase = null`)
+// Las credenciales vienen de variables de entorno con prefijo VITE_ (Vite
+// solo expone al cliente las que empiezan así). En este proyecto se
+// configuran directamente en Vercel (Project Settings → Environment
+// Variables) en vez de un archivo .env.local — Vercel las inyecta en el
+// build igual. Para desarrollo LOCAL (npm run dev en tu máquina) sí vas a
+// necesitar un .env.local propio con estas mismas dos variables, porque
+// las de Vercel no se propagan a tu entorno local.
 // ============================================================================
 
-// import { createClient } from '@supabase/supabase-js'
-//
-// const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
-// const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
-//
-// if (!supabaseUrl || !supabaseAnonKey) {
-//   throw new Error(
-//     'Faltan las variables de entorno VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY. ' +
-//     'Revisa tu archivo .env.local.'
-//   )
-// }
-//
-// export const supabase = createClient(supabaseUrl, supabaseAnonKey)
+import { createClient } from '@supabase/supabase-js'
 
-// TODO: eliminar esta línea al descomentar el bloque de arriba.
-export const supabase = null
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
+
+if (!supabaseUrl || !supabaseAnonKey) {
+  console.error(
+    'Faltan las variables de entorno VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY. ' +
+    'Revísalas en Vercel (Project Settings → Environment Variables) o en tu .env.local local.'
+  )
+}
+
+export const supabase = supabaseUrl && supabaseAnonKey ? createClient(supabaseUrl, supabaseAnonKey) : null
 
 export const isSupabaseConfigured = supabase !== null
