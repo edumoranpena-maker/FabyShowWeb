@@ -1,11 +1,30 @@
 import { motion } from 'framer-motion'
 import { Instagram, Clock, MapPin, MessageCircle } from 'lucide-react'
 import { CONTACTO, whatsappLink, MENSAJES } from '../data/content'
+import { contactoService } from '../services/contactoService'
+import { usePublicSectionData } from '../hooks/usePublicSectionData'
 import WhatsAppButton from './WhatsAppButton'
 import TikTokIcon from './icons/TikTokIcon'
 import Confetti from './decor/Confetti'
 
+// El número/link de WhatsApp se queda fijo desde content.js a propósito
+// (no se vuelve dinámico en esta pasada): es el botón más importante de
+// toda la web y no queremos correr el riesgo de que se vea un número
+// distinto por una fracción de segundo mientras carga Supabase. Solo la
+// dirección, horario y redes se traen de faby_contacto.
+async function fetchContacto() {
+  const row = await contactoService.get()
+  return {
+    direccion: row.direccion,
+    horario: row.horario,
+    instagram: row.instagram_url,
+    tiktok: row.tiktok_url,
+  }
+}
+
 export default function Contacto() {
+  const contacto = usePublicSectionData(fetchContacto, CONTACTO)
+
   return (
     <section id="contacto" className="relative py-20 md:py-28 bg-white">
       <Confetti variant="a" />
@@ -14,15 +33,9 @@ export default function Contacto() {
           <span className="inline-block font-body text-sm font-semibold text-morado-600 bg-morado-50 px-4 py-1.5 rounded-full mb-4">
             Contacto
           </span>
-          <h2 className="font-display text-3xl md:text-4xl font-semibold text-ink mb-4">
-            Hablemos de tu evento
-          </h2>
-          <p className="font-body text-ink/60 mb-6">
-            Escríbenos y te ayudamos a armar la fiesta perfecta.
-          </p>
-          <WhatsAppButton href={whatsappLink(MENSAJES.general)}>
-            Cotizar por WhatsApp
-          </WhatsAppButton>
+          <h2 className="font-display text-3xl md:text-4xl font-semibold text-ink mb-4">Hablemos de tu evento</h2>
+          <p className="font-body text-ink/60 mb-6">Escríbenos y te ayudamos a armar la fiesta perfecta.</p>
+          <WhatsAppButton href={whatsappLink(MENSAJES.general)}>Cotizar por WhatsApp</WhatsAppButton>
         </div>
 
         <motion.div
@@ -34,11 +47,11 @@ export default function Contacto() {
         >
           <div className="flex items-start gap-3">
             <MapPin className="w-5 h-5 text-morado-600 flex-shrink-0 mt-0.5" />
-            <span className="font-body text-sm text-ink/75">{CONTACTO.direccion}</span>
+            <span className="font-body text-sm text-ink/75">{contacto.direccion}</span>
           </div>
           <div className="flex items-start gap-3">
             <Clock className="w-5 h-5 text-morado-600 flex-shrink-0 mt-0.5" />
-            <span className="font-body text-sm text-ink/75">{CONTACTO.horario}</span>
+            <span className="font-body text-sm text-ink/75">{contacto.horario}</span>
           </div>
           <div className="flex items-start gap-3">
             <MessageCircle className="w-5 h-5 text-morado-600 flex-shrink-0 mt-0.5" />
@@ -54,7 +67,7 @@ export default function Contacto() {
 
           <div className="flex gap-3 pt-2">
             <a
-              href={CONTACTO.tiktok}
+              href={contacto.tiktok}
               target="_blank"
               rel="noopener noreferrer"
               aria-label="TikTok"
@@ -63,7 +76,7 @@ export default function Contacto() {
               <TikTokIcon className="w-4 h-4" />
             </a>
             <a
-              href={CONTACTO.instagram}
+              href={contacto.instagram}
               target="_blank"
               rel="noopener noreferrer"
               aria-label="Instagram"

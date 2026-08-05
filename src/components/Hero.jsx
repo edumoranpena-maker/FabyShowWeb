@@ -1,15 +1,22 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import WhatsAppButton from './WhatsAppButton'
 import HeroGallery from './HeroGallery'
 import { whatsappLink, MENSAJES, STATS, HERO_GALLERY } from '../data/content'
 import { useCountUp } from '../hooks/useCountUp'
 import { useImagePalettes } from '../hooks/useImagePalettes'
+import { usePublicSectionData } from '../hooks/usePublicSectionData'
+import { heroService } from '../services/heroService'
 import { FALLBACK_GRADIENT } from '../lib/colorExtraction'
 
 const HEADLINE = 'Hacemos que cada cumpleaños sea un espectáculo inolvidable.'
 const SUBTITLE =
   'Animadoras, personajes, DJ y shows en vivo con un equipo profesional que se encarga de todo, para que tú solo disfrutes la fiesta.'
+
+async function fetchHeroImages() {
+  const rows = await heroService.getAll()
+  return rows.map((r) => r.image_url)
+}
 
 function Stat({ value, suffix, label }) {
   const { ref, value: current } = useCountUp(value)
@@ -25,21 +32,28 @@ function Stat({ value, suffix, label }) {
 }
 
 export default function Hero() {
+  const heroImages = usePublicSectionData(fetchHeroImages, HERO_GALLERY)
+
   // Paleta/gradiente de cada foto del carrusel — se calcula una sola vez
-  // (con cache persistente) y se reutiliza cada vez que esa foto vuelve
-  // a estar activa. Ver src/lib/colorExtraction.js para el detalle.
-  const palettes = useImagePalettes(HERO_GALLERY)
-  const [activeSrc, setActiveSrc] = useState(HERO_GALLERY[0])
+  // por imagen (con cache persistente) y se reutiliza cada vez que esa
+  // foto vuelve a estar activa. Si "heroImages" pasa del fallback
+  // estático a la lista real de Supabase, se recalcula solo para las
+  // fotos nuevas (las que ya estén cacheadas no se vuelven a procesar).
+  const palettes = useImagePalettes(heroImages)
+  const [activeSrc, setActiveSrc] = useState(heroImages[0])
+
+  // Si cambia el set de imágenes, sincroniza cuál está "activa" para que
+  // el fondo ambiental no quede apuntando a una foto que ya no existe.
+  useEffect(() => {
+    setActiveSrc(heroImages[0])
+  }, [heroImages])
 
   const handleActiveChange = useCallback((src) => setActiveSrc(src), [])
 
   return (
     <section id="hero" className="relative bg-ink pt-24 pb-16 md:pt-36 md:pb-24 overflow-hidden">
       {/* Fondo ambiental: un gradiente distinto por cada foto del carrusel,
-          generado automáticamente a partir de sus colores dominantes.
-          Se apilan todos los gradientes superpuestos y se hace crossfade
-          entre ellos según cuál imagen está activa — mismo patrón que el
-          crossfade de las fotos en HeroGallery, pero para el fondo. */}
+          generado automáticamente a partir de sus colores dominantes. */}
       <div className="absolute inset-0">
         <div className="absolute inset-0 bg-ink" />
         <AnimatePresence>
@@ -71,7 +85,7 @@ export default function Hero() {
           transition={{ duration: 0.7, ease: 'easeOut' }}
           className="relative rounded-4xl overflow-hidden shadow-glow h-[420px] sm:h-[480px] md:h-[520px] lg:h-[600px] mb-10 lg:mb-12"
         >
-          <HeroGallery headline={HEADLINE} subtitle={SUBTITLE} onActiveChange={handleActiveChange} />
+          <HeroGallery images={heroImages} headline={HEADLINE} subtitle={SUBTITLE} onActiveChange={handleActiveChange} />
         </motion.div>
 
         {/* Contenido estático debajo de la galería, centrado */}

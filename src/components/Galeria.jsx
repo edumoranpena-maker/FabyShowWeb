@@ -2,6 +2,8 @@ import { useState, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { X, ChevronLeft, ChevronRight, Expand } from 'lucide-react'
 import { GALERIA, GALERIA_FILTROS } from '../data/content'
+import { galeriaService } from '../services/galeriaService'
+import { usePublicSectionData } from '../hooks/usePublicSectionData'
 import Confetti from './decor/Confetti'
 
 const alturaClase = {
@@ -10,12 +12,14 @@ const alturaClase = {
 }
 
 export default function Galeria() {
+  const galeria = usePublicSectionData(() => galeriaService.getAll(), GALERIA)
+
   const [filtro, setFiltro] = useState('Todos')
   const [lightboxIndex, setLightboxIndex] = useState(null)
 
   const items = useMemo(
-    () => (filtro === 'Todos' ? GALERIA : GALERIA.filter((g) => g.categoria === filtro)),
-    [filtro]
+    () => (filtro === 'Todos' ? galeria : galeria.filter((g) => g.categoria === filtro)),
+    [filtro, galeria]
   )
 
   const openLightbox = (id) => {

@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react'
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion'
-import { HERO_GALLERY } from '../data/content'
 
 // Duraciones del ciclo cinematográfico de cada slide
 const SHARP_MS = 2000 // imagen nítida, sin texto
@@ -8,7 +7,11 @@ const TEXT_MS = 3200 // blur + overlay + texto visible
 const TRANSITION_MS = 900 // crossfade + zoom hacia el siguiente slide
 const TOTAL_MS = SHARP_MS + TEXT_MS + TRANSITION_MS
 
-export default function HeroGallery({ headline, subtitle, onActiveChange }) {
+// "images" ahora llega por prop (en vez de importar HERO_GALLERY fijo) —
+// así funciona igual de bien con el fallback estático o con la lista
+// real que traiga faby_hero_slides desde Supabase, sea cual sea su
+// cantidad de fotos.
+export default function HeroGallery({ images, headline, subtitle, onActiveChange }) {
   const [index, setIndex] = useState(0)
   const [blurred, setBlurred] = useState(false)
   const [showText, setShowText] = useState(false)
@@ -16,20 +19,28 @@ export default function HeroGallery({ headline, subtitle, onActiveChange }) {
   const [textTurn, setTextTurn] = useState(0)
   const reduceMotion = useReducedMotion()
 
-  // Precarga las 3 imágenes para evitar parpadeos al iniciar el ciclo
+  // Si cambia el set de imágenes (ej. llega la lista real de Supabase
+  // reemplazando el fallback estático), reinicia el ciclo desde cero.
   useEffect(() => {
-    HERO_GALLERY.forEach((src) => {
+    setIndex(0)
+    setTextTurn(0)
+    setShowText(false)
+    setBlurred(false)
+  }, [images])
+
+  // Precarga las imágenes para evitar parpadeos al iniciar el ciclo
+  useEffect(() => {
+    images.forEach((src) => {
       const img = new Image()
       img.src = src
     })
-  }, [])
+  }, [images])
 
   // Avisa al padre (Hero.jsx) cual imagen esta activa, para que pueda
-  // sincronizar el fondo ambiental con el slide visible — incluye el
-  // valor inicial al montar, no solo los cambios posteriores.
+  // sincronizar el fondo ambiental con el slide visible.
   useEffect(() => {
-    onActiveChange?.(HERO_GALLERY[index])
-  }, [index, onActiveChange])
+    onActiveChange?.(images[index])
+  }, [index, images, onActiveChange])
 
   useEffect(() => {
     if (reduceMotion) {
@@ -49,7 +60,7 @@ export default function HeroGallery({ headline, subtitle, onActiveChange }) {
     }, SHARP_MS + TEXT_MS)
 
     const t3 = setTimeout(() => {
-      setIndex((i) => (i + 1) % HERO_GALLERY.length)
+      setIndex((i) => (i + 1) % images.length)
       setTextTurn((t) => (t + 1) % 2)
     }, TOTAL_MS)
 
@@ -58,7 +69,7 @@ export default function HeroGallery({ headline, subtitle, onActiveChange }) {
       clearTimeout(t2)
       clearTimeout(t3)
     }
-  }, [index, reduceMotion])
+  }, [index, reduceMotion, images])
 
   const totalS = TOTAL_MS / 1000
   const transitionS = TRANSITION_MS / 1000
@@ -66,7 +77,7 @@ export default function HeroGallery({ headline, subtitle, onActiveChange }) {
 
   return (
     <div className="relative w-full h-full">
-      {HERO_GALLERY.map((src, i) => {
+      {images.map((src, i) => {
         const isActive = i === index
         return (
           <motion.div
@@ -98,9 +109,7 @@ export default function HeroGallery({ headline, subtitle, onActiveChange }) {
         )
       })}
 
-      {/* Oscurece unicamente la franja inferior donde aparece el texto,
-          no la imagen completa. Siempre tiene una presencia sutil (0.3)
-          para legibilidad base, y sube a 1 cuando el texto esta activo. */}
+      {/* Oscurece unicamente la franja inferior donde aparece el texto */}
       <div
         className="absolute inset-x-0 bottom-0 h-[60%] sm:h-[54%] bg-gradient-to-t from-ink via-ink/55 to-transparent pointer-events-none"
         style={{ opacity: blurred ? 1 : 0.3, transition: 'opacity 700ms ease' }}

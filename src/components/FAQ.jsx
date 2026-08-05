@@ -2,9 +2,12 @@ import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Plus } from 'lucide-react'
 import { FAQS } from '../data/content'
+import { faqService } from '../services/faqService'
+import { usePublicSectionData } from '../hooks/usePublicSectionData'
 import Confetti from './decor/Confetti'
 
 export default function FAQ() {
+  const faqs = usePublicSectionData(() => faqService.getAll(), FAQS)
   const [open, setOpen] = useState(0)
 
   return (
@@ -21,11 +24,11 @@ export default function FAQ() {
         </div>
 
         <div className="flex flex-col gap-3">
-          {FAQS.map((f, i) => {
+          {faqs.map((f, i) => {
             const isOpen = open === i
             return (
               <div
-                key={f.pregunta}
+                key={f.id ?? f.pregunta}
                 className={`rounded-2xl border transition-colors duration-300 overflow-hidden ${
                   isOpen ? 'border-fucsia-200 bg-white shadow-card' : 'border-ink/8 bg-white/60'
                 }`}

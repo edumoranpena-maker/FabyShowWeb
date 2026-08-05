@@ -1,6 +1,8 @@
 import { motion } from 'framer-motion'
 import * as Icons from 'lucide-react'
 import { SERVICIOS } from '../data/content'
+import { serviciosService } from '../services/serviciosService'
+import { usePublicSectionData } from '../hooks/usePublicSectionData'
 import Confetti from './decor/Confetti'
 
 const container = {
@@ -22,7 +24,16 @@ const accentByIndex = [
   'from-amarillo-500 to-amarillo-400',
 ]
 
+// Normaliza las filas de Supabase (titulo/descripcion) a la misma forma
+// que ya usaba el contenido estático (title/desc), para no tocar el JSX.
+async function fetchServicios() {
+  const rows = await serviciosService.getAll()
+  return rows.map((r) => ({ id: r.id, icon: r.icon, title: r.titulo, desc: r.descripcion }))
+}
+
 export default function Servicios() {
+  const servicios = usePublicSectionData(fetchServicios, SERVICIOS)
+
   return (
     <section id="servicios" className="relative py-20 md:py-28 mesh-bg">
       <Confetti variant="a" />
@@ -46,11 +57,11 @@ export default function Servicios() {
           viewport={{ once: true, margin: '-60px' }}
           className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 md:gap-5"
         >
-          {SERVICIOS.map((s, i) => {
+          {servicios.map((s, i) => {
             const Icon = Icons[s.icon]
             return (
               <motion.div
-                key={s.title}
+                key={s.id ?? `${s.title}-${i}`}
                 variants={item}
                 whileHover={{ y: -6 }}
                 className="group relative bg-white rounded-3xl p-5 md:p-6 shadow-card hover:shadow-soft transition-shadow duration-300 border border-ink/5"
