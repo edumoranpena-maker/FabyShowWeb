@@ -1,5 +1,4 @@
 import { motion } from 'framer-motion'
-import * as Icons from 'lucide-react'
 import { SERVICIOS } from '../data/content'
 import { serviciosService } from '../services/serviciosService'
 import { usePublicSectionData } from '../hooks/usePublicSectionData'
@@ -17,18 +16,11 @@ const item = {
   show: { opacity: 1, y: 0, transition: { duration: 0.5, ease: 'easeOut' } },
 }
 
-const accentByIndex = [
-  'from-fucsia-500 to-fucsia-400',
-  'from-morado-500 to-morado-400',
-  'from-celeste-500 to-celeste-400',
-  'from-amarillo-500 to-amarillo-400',
-]
-
-// Normaliza las filas de Supabase (titulo/descripcion) a la misma forma
-// que ya usaba el contenido estático (title/desc), para no tocar el JSX.
+// Normaliza las filas de Supabase (titulo/imagen_url) a la misma forma
+// que ya usaba el contenido estático (title/image), para no tocar el JSX.
 async function fetchServicios() {
   const rows = await serviciosService.getAll()
-  return rows.map((r) => ({ id: r.id, icon: r.icon, title: r.titulo, desc: r.descripcion }))
+  return rows.map((r) => ({ id: r.id, title: r.titulo, image: r.imagen_url }))
 }
 
 export default function Servicios() {
@@ -57,25 +49,27 @@ export default function Servicios() {
           viewport={{ once: true, margin: '-60px' }}
           className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 md:gap-5"
         >
-          {servicios.map((s, i) => {
-            const Icon = Icons[s.icon]
-            return (
-              <motion.div
-                key={s.id ?? `${s.title}-${i}`}
-                variants={item}
-                whileHover={{ y: -6 }}
-                className="group relative bg-white rounded-3xl p-5 md:p-6 shadow-card hover:shadow-soft transition-shadow duration-300 border border-ink/5"
-              >
-                <div
-                  className={`w-12 h-12 rounded-2xl bg-gradient-to-br ${accentByIndex[i % accentByIndex.length]} flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300`}
-                >
-                  {Icon && <Icon className="w-6 h-6 text-white" strokeWidth={2} />}
-                </div>
-                <h3 className="font-display text-base md:text-lg font-medium text-ink mb-1.5">{s.title}</h3>
-                <p className="font-body text-sm text-ink/55 leading-relaxed">{s.desc}</p>
-              </motion.div>
-            )
-          })}
+          {servicios.map((s, i) => (
+            <motion.div
+              key={s.id ?? `${s.title}-${i}`}
+              variants={item}
+              whileHover={{ y: -6 }}
+              className="group relative bg-white rounded-3xl p-3 shadow-card hover:shadow-soft transition-shadow duration-300 border border-ink/5"
+            >
+              <div className="relative rounded-2xl overflow-hidden aspect-square mb-3">
+                <img
+                  src={s.image}
+                  alt={s.title}
+                  loading="lazy"
+                  className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                />
+                <div className="absolute inset-0 ring-1 ring-inset ring-ink/5 group-hover:ring-white/50 rounded-2xl transition-all duration-300" />
+              </div>
+              <h3 className="font-display text-sm md:text-base font-medium text-ink text-center px-1 pb-1">
+                {s.title}
+              </h3>
+            </motion.div>
+          ))}
         </motion.div>
       </div>
     </section>
