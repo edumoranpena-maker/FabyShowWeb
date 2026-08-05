@@ -1,7 +1,8 @@
 // ============================================================
 // TODO PARA FABY SHOW: este archivo centraliza todos los textos,
-// precios e imágenes de la web. Reemplaza las URLs de Unsplash
-// por fotos y videos reales de tus eventos antes de publicar.
+// precios e imágenes de la web. Funciona como FALLBACK estático —
+// el sitio ahora intenta traer los datos reales desde Supabase, y
+// si todavía no está conectado (o falla), usa este contenido.
 // ============================================================
 
 export const WHATSAPP_NUMBER = '51931230749'
@@ -31,7 +32,6 @@ export const STATS = [
   { value: 9, suffix: '', label: 'años de experiencia' },
 ]
 
-// Fotos del carrusel cinematográfico del Hero. Reemplaza por fotos reales de eventos.
 export const HERO_GALLERY = [
   'https://images.unsplash.com/photo-1530103862676-de8c9debad1d?q=80&w=1600&auto=format&fit=crop',
   'https://images.unsplash.com/photo-1533294455009-a77b7557d2d1?q=80&w=1600&auto=format&fit=crop',
@@ -39,16 +39,16 @@ export const HERO_GALLERY = [
 ]
 
 export const SERVICIOS = [
-  { icon: 'Drama', title: 'Animadoras', desc: 'Energía y carisma para mantener la fiesta activa de principio a fin.' },
-  { icon: 'PartyPopper', title: 'Personajes infantiles', desc: 'Los favoritos de tus hijos, en vivo, listos para la foto perfecta.' },
-  { icon: 'Sparkles', title: 'Burbujas gigantes', desc: 'Un espectáculo visual que atrapa a niños y adultos por igual.' },
-  { icon: 'Music4', title: 'DJ Infantil', desc: 'Música, luces y baile: la pista nunca se queda vacía.' },
-  { icon: 'Paintbrush', title: 'Pintacaritas', desc: 'Diseños coloridos y seguros para la piel, hechos por artistas.' },
-  { icon: 'Wand2', title: 'Magia', desc: 'Trucos que sorprenden y dejan a los niños con la boca abierta.' },
-  { icon: 'Gamepad2', title: 'Juegos', desc: 'Dinámicas grupales pensadas para todas las edades.' },
-  { icon: 'Mic2', title: 'Concursos', desc: 'Premios y risas aseguradas con nuestros concursos animados.' },
-  { icon: 'PartyPopper', title: 'Hora loca', desc: 'Espuma, luces y accesorios para el cierre más divertido.' },
-  { icon: 'Gift', title: 'Decoración', desc: 'Ambientación temática que combina con el resto del show.' },
+  { icon: 'Drama', title: 'Animadoras', desc: 'Energía y carisma para mantener la fiesta activa de principio a fin.', image: 'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?q=80&w=600&auto=format&fit=crop' },
+  { icon: 'PartyPopper', title: 'Personajes infantiles', desc: 'Los favoritos de tus hijos, en vivo, listos para la foto perfecta.', image: 'https://images.unsplash.com/photo-1533294455009-a77b7557d2d1?q=80&w=600&auto=format&fit=crop' },
+  { icon: 'Sparkles', title: 'Burbujas gigantes', desc: 'Un espectáculo visual que atrapa a niños y adultos por igual.', image: 'https://images.unsplash.com/photo-1530103862676-de8c9debad1d?q=80&w=600&auto=format&fit=crop' },
+  { icon: 'Music4', title: 'DJ Infantil', desc: 'Música, luces y baile: la pista nunca se queda vacía.', image: 'https://images.unsplash.com/photo-1470229722913-7c0e2dbbafd3?q=80&w=600&auto=format&fit=crop' },
+  { icon: 'Paintbrush', title: 'Pintacaritas', desc: 'Diseños coloridos y seguros para la piel, hechos por artistas.', image: 'https://images.unsplash.com/photo-1560582861-45078880e48b?q=80&w=600&auto=format&fit=crop' },
+  { icon: 'Wand2', title: 'Magia', desc: 'Trucos que sorprenden y dejan a los niños con la boca abierta.', image: 'https://images.unsplash.com/photo-1602631985686-1bb0e6a8696e?q=80&w=600&auto=format&fit=crop' },
+  { icon: 'Gamepad2', title: 'Juegos', desc: 'Dinámicas grupales pensadas para todas las edades.', image: 'https://images.unsplash.com/photo-1509825232004-3c9b7a935528?q=80&w=600&auto=format&fit=crop' },
+  { icon: 'Mic2', title: 'Concursos', desc: 'Premios y risas aseguradas con nuestros concursos animados.', image: 'https://images.unsplash.com/photo-1519689680058-324335c77eba?q=80&w=600&auto=format&fit=crop' },
+  { icon: 'PartyPopper', title: 'Hora loca', desc: 'Espuma, luces y accesorios para el cierre más divertido.', image: 'https://images.unsplash.com/photo-1464349153735-e88d8aa5ca6d?q=80&w=600&auto=format&fit=crop' },
+  { icon: 'Gift', title: 'Decoración', desc: 'Ambientación temática que combina con el resto del show.', image: 'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?q=80&w=600&auto=format&fit=crop' },
 ]
 
 export const PAQUETES = [
