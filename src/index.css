@@ -6,6 +6,16 @@ html {
   scroll-behavior: smooth;
 }
 
+/* Desktop: compensa la altura de la Topbar compacta sticky (DesktopTopbar)
+   al navegar por anclas, para que el inicio de cada sección no quede
+   tapado detrás de la barra. No aplica en Mobile/tablet, donde no hay
+   Topbar sticky equivalente. */
+@media (min-width: 1024px) {
+  [id] {
+    scroll-margin-top: 4.5rem;
+  }
+}
+
 body {
   @apply font-body text-ink antialiased;
   background-color: #ffffff;
