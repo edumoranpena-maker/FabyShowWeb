@@ -78,6 +78,23 @@ export default function Hero() {
             vive dentro de la galería y se anima junto con el subtítulo. */}
         <h1 className="sr-only">{HEADLINE}</h1>
 
+        {/* Identidad de marca grande, exclusiva de Desktop (>= lg). En
+            Mobile/tablet el logo lo sigue mostrando el Navbar de siempre,
+            fijo sobre el Hero — aquí no se duplica esa lógica. */}
+        <motion.div
+          initial={{ opacity: 0, y: -12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, ease: 'easeOut' }}
+          className="hidden lg:flex items-center gap-3 mb-8"
+        >
+          <img
+            src="/avatar-faby-show.png"
+            alt=""
+            className="w-12 h-12 rounded-full object-cover shadow-glow"
+          />
+          <img src="/logo-faby-show.png" alt="Faby Show" className="h-28 w-auto" />
+        </motion.div>
+
         {/* Galería cinematográfica: nítida -> blur + overlay -> titular/subtítulo -> crossfade/zoom */}
         <motion.div
           initial={{ opacity: 0, y: 24 }}
@@ -93,10 +110,17 @@ export default function Hero() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.7, delay: 0.15, ease: 'easeOut' }}
-          className="max-w-2xl mx-auto flex flex-col items-center text-center"
+          className="max-w-2xl lg:max-w-4xl mx-auto flex flex-col items-center text-center"
         >
-          <div className="flex flex-col gap-4 mb-14 items-center">
-            <WhatsAppButton href={whatsappLink(MENSAJES.general)} size="lg">
+          {/* En Desktop (lg+) los tres botones van en una sola fila,
+              reduciendo tamaño/padding/gap para que quepan siempre sin
+              overflow. En Mobile/tablet se mantienen apilados como antes. */}
+          <div className="flex flex-col lg:flex-row lg:flex-nowrap gap-4 lg:gap-3 mb-14 items-center lg:justify-center">
+            <WhatsAppButton
+              href={whatsappLink(MENSAJES.general)}
+              size="lg"
+              className="lg:px-5 lg:py-2.5 lg:text-sm lg:gap-1.5 lg:whitespace-nowrap"
+            >
               Cotizar por WhatsApp
             </WhatsAppButton>
             <WhatsAppButton
@@ -105,7 +129,7 @@ export default function Hero() {
               size="lg"
               icon={false}
               external={false}
-              className="!bg-white/10"
+              className="!bg-white/10 lg:px-5 lg:py-2.5 lg:text-sm lg:whitespace-nowrap"
             >
               Ver nuestros eventos
             </WhatsAppButton>
@@ -115,7 +139,7 @@ export default function Hero() {
               size="lg"
               icon={false}
               external={false}
-              className="!bg-white/10"
+              className="!bg-white/10 lg:px-5 lg:py-2.5 lg:text-sm lg:whitespace-nowrap"
             >
               Ver nuestros planes
             </WhatsAppButton>

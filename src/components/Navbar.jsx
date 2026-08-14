@@ -16,11 +16,6 @@ export default function Navbar() {
   const scrolled = useScrolled(30)
   const [open, setOpen] = useState(false)
 
-  const textColor = scrolled ? 'text-ink' : 'text-white'
-  const socialChip = scrolled
-    ? 'bg-ink/5 text-ink hover:bg-fucsia-50 hover:text-fucsia-600'
-    : 'bg-white/15 text-white hover:bg-white/25'
-
   return (
     <>
       {/*
@@ -34,9 +29,14 @@ export default function Navbar() {
         barra (~60px), por eso se veia "sin fondo" y mezclado con el
         contenido. Sacarlo del header es la correccion de raiz, no un
         parche visual.
+
+        Este header ahora es EXCLUSIVO de Mobile/tablet (< lg): en Desktop
+        el logo grande vive dentro del Hero y la navegacion la resuelve
+        DesktopTopbar (ver src/components/DesktopTopbar.jsx), asi que aqui
+        se oculta por completo con `lg:hidden` en vez de duplicar layouts.
       */}
       <header
-        className={`fixed top-0 inset-x-0 z-40 transition-all duration-500 ${
+        className={`lg:hidden fixed top-0 inset-x-0 z-40 transition-all duration-500 ${
           scrolled ? 'bg-white/85 backdrop-blur-lg shadow-card py-1' : 'bg-transparent py-2'
         }`}
       >
@@ -54,37 +54,10 @@ export default function Navbar() {
             />
           </a>
 
-          <div className="hidden lg:flex items-center gap-8">
-            {NAV_LINKS.map((link) => (
-              <a
-                key={link.href}
-                href={link.href}
-                className={`font-body text-sm font-medium transition-colors hover:text-fucsia-500 ${textColor}`}
-              >
-                {link.label}
-              </a>
-            ))}
-
-            <div className="flex items-center gap-2 pl-2 border-l border-current/15">
-              {SOCIALS.map((s) => (
-                <a
-                  key={s.label}
-                  href={s.href}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  aria-label={s.label}
-                  className={`w-9 h-9 rounded-full flex items-center justify-center transition-colors duration-300 ${socialChip}`}
-                >
-                  <s.icon className="w-4 h-4" />
-                </a>
-              ))}
-            </div>
-          </div>
-
           <button
             aria-label="Abrir menú"
             onClick={() => setOpen(true)}
-            className="lg:hidden flex items-center justify-center w-11 h-11 rounded-full bg-white text-ink shadow-card"
+            className="flex items-center justify-center w-11 h-11 rounded-full bg-white text-ink shadow-card"
           >
             <Menu className="w-6 h-6" />
           </button>
