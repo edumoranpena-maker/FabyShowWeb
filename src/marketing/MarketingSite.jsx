@@ -1,4 +1,5 @@
 import Navbar from '../components/Navbar'
+import DesktopTopbar from '../components/DesktopTopbar'
 import Hero from '../components/Hero'
 import Servicios from '../components/Servicios'
 import Paquetes from '../components/Paquetes'
@@ -17,6 +18,7 @@ export default function MarketingSite() {
   return (
     <div className="overflow-x-hidden">
       <Navbar />
+      <DesktopTopbar />
       <main>
         <Hero />
         <Servicios />
