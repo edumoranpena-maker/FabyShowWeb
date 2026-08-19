@@ -10,9 +10,10 @@ const SOCIALS = [
 ]
 
 /**
- * Topbar compacta y sticky, exclusiva para Desktop / pantallas horizontales
- * (oculta por completo por debajo de "lg" — el Navbar mobile de siempre se
- * encarga de esos anchos). Conceptualmente es un elemento aparte del Hero:
+ * Topbar compacta y sticky, exclusiva para pantallas horizontales reales
+ * (orientation: landscape, variante `hz` definida en tailwind.config.js) —
+ * celular rotado, tablet o desktop. En vertical queda oculta por completo,
+ * ahi el Navbar mobile de siempre se encarga. Conceptualmente es un elemento aparte del Hero:
  * el Hero presenta la marca en grande, esta barra solo navega, y por eso
  * es mucho mas pequeña que el header anterior.
  *
@@ -28,7 +29,7 @@ export default function DesktopTopbar() {
   return (
     <header
       aria-hidden={!heroExited}
-      className={`hidden lg:block fixed top-0 inset-x-0 z-40 h-16 bg-white/95 backdrop-blur-lg shadow-card transition-all duration-300 ease-out ${
+      className={`hidden hz:block fixed top-0 inset-x-0 z-40 h-16 bg-white/95 backdrop-blur-lg shadow-card transition-all duration-300 ease-out ${
         heroExited
           ? 'opacity-100 translate-y-0 pointer-events-auto'
           : 'opacity-0 -translate-y-2 pointer-events-none'

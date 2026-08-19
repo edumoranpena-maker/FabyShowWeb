@@ -85,7 +85,7 @@ export default function Hero() {
           initial={{ opacity: 0, y: -12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, ease: 'easeOut' }}
-          className="hidden lg:flex items-center gap-3 mb-8"
+          className="hidden hz:flex items-center gap-3 mb-8"
         >
           <img
             src="/avatar-faby-show.png"
@@ -110,16 +110,16 @@ export default function Hero() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.7, delay: 0.15, ease: 'easeOut' }}
-          className="max-w-2xl lg:max-w-4xl mx-auto flex flex-col items-center text-center"
+          className="max-w-2xl hz:max-w-4xl mx-auto flex flex-col items-center text-center"
         >
           {/* En Desktop (lg+) los tres botones van en una sola fila,
               reduciendo tamaño/padding/gap para que quepan siempre sin
               overflow. En Mobile/tablet se mantienen apilados como antes. */}
-          <div className="flex flex-col lg:flex-row lg:flex-nowrap gap-4 lg:gap-3 mb-14 items-center lg:justify-center">
+          <div className="flex flex-col hz:flex-row hz:flex-nowrap gap-4 hz:gap-3 mb-14 items-center hz:justify-center">
             <WhatsAppButton
               href={whatsappLink(MENSAJES.general)}
               size="lg"
-              className="lg:px-5 lg:py-2.5 lg:text-sm lg:gap-1.5 lg:whitespace-nowrap"
+              className="hz:px-5 hz:py-2.5 hz:text-sm hz:gap-1.5 hz:whitespace-nowrap"
             >
               Cotizar por WhatsApp
             </WhatsAppButton>
@@ -129,7 +129,7 @@ export default function Hero() {
               size="lg"
               icon={false}
               external={false}
-              className="!bg-white/10 lg:px-5 lg:py-2.5 lg:text-sm lg:whitespace-nowrap"
+              className="!bg-white/10 hz:px-5 hz:py-2.5 hz:text-sm hz:whitespace-nowrap"
             >
               Ver nuestros eventos
             </WhatsAppButton>
@@ -139,7 +139,7 @@ export default function Hero() {
               size="lg"
               icon={false}
               external={false}
-              className="!bg-white/10 lg:px-5 lg:py-2.5 lg:text-sm lg:whitespace-nowrap"
+              className="!bg-white/10 hz:px-5 hz:py-2.5 hz:text-sm hz:whitespace-nowrap"
             >
               Ver nuestros planes
             </WhatsAppButton>

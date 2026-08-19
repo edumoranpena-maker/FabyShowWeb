@@ -30,13 +30,16 @@ export default function Navbar() {
         contenido. Sacarlo del header es la correccion de raiz, no un
         parche visual.
 
-        Este header ahora es EXCLUSIVO de Mobile/tablet (< lg): en Desktop
-        el logo grande vive dentro del Hero y la navegacion la resuelve
-        DesktopTopbar (ver src/components/DesktopTopbar.jsx), asi que aqui
-        se oculta por completo con `lg:hidden` en vez de duplicar layouts.
+        Este header ahora es EXCLUSIVO de pantallas verticales (portrait):
+        en horizontal (celular rotado, tablet o desktop) el logo grande vive
+        dentro del Hero y la navegacion la resuelve DesktopTopbar (ver
+        src/components/DesktopTopbar.jsx), asi que aqui se oculta por
+        completo con `hz:hidden` en vez de duplicar layouts. `hz` es una
+        variante propia basada en `orientation: landscape` (ver
+        tailwind.config.js), no en un ancho fijo.
       */}
       <header
-        className={`lg:hidden fixed top-0 inset-x-0 z-40 transition-all duration-500 ${
+        className={`hz:hidden fixed top-0 inset-x-0 z-40 transition-all duration-500 ${
           scrolled ? 'bg-white/85 backdrop-blur-lg shadow-card py-1' : 'bg-transparent py-2'
         }`}
       >
@@ -72,7 +75,7 @@ export default function Navbar() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[100] bg-ink/50 backdrop-blur-sm lg:hidden"
+            className="fixed inset-0 z-[100] bg-ink/50 backdrop-blur-sm hz:hidden"
             onClick={() => setOpen(false)}
           >
             <motion.div
