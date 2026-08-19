@@ -6,11 +6,13 @@ html {
   scroll-behavior: smooth;
 }
 
-/* Desktop: compensa la altura de la Topbar compacta sticky (DesktopTopbar)
-   al navegar por anclas, para que el inicio de cada sección no quede
-   tapado detrás de la barra. No aplica en Mobile/tablet, donde no hay
-   Topbar sticky equivalente. */
-@media (min-width: 1024px) {
+/* Horizontal (celular rotado, tablet o desktop): compensa la altura de la
+   Topbar compacta sticky (DesktopTopbar) al navegar por anclas, para que
+   el inicio de cada sección no quede tapado detrás de la barra. Usa la
+   misma condición que la variante `hz` de Tailwind (orientation: landscape
+   + ancho mínimo), no un breakpoint fijo. No aplica en vertical, donde no
+   hay Topbar sticky equivalente. */
+@media (orientation: landscape) and (min-width: 640px) {
   [id] {
     scroll-margin-top: 4.5rem;
   }
