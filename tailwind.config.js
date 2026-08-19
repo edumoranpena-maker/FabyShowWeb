@@ -3,6 +3,14 @@ export default {
   content: ['./index.html', './src/**/*.{js,jsx}'],
   theme: {
     extend: {
+      screens: {
+        // Variante propia basada en orientacion real (no solo ancho), para
+        // que "pantalla horizontal" incluya celulares/tablets rotados a
+        // landscape y no solo monitores de escritorio >= 1024px. El piso
+        // de 640px evita que celulares muy angostos en landscape (raros)
+        // reciban un layout pensado para pantallas mas anchas.
+        hz: { raw: '(orientation: landscape) and (min-width: 640px)' },
+      },
       colors: {
         fucsia: {
           50: '#fff0f7',
