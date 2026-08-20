@@ -37,7 +37,7 @@ export function getAllowedTelegramUserIds() {
     .filter(Boolean)
 }
 
-/** API key de Anthropic, usada solo server-side para resolver intención. */
-export function getAnthropicApiKey() {
-  return process.env.ANTHROPIC_API_KEY || null
+/** API key de Google Gemini — el agente la usa para interpretar lenguaje natural. */
+export function getGeminiApiKey() {
+  return process.env.GEMINI_API_KEY || null
 }
