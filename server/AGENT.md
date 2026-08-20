@@ -24,7 +24,7 @@ server/agent/core.js               ← núcleo del agente (agnóstico de canal)
    │
    ├─ ¿trae foto/video? ────► server/agent/mediaPlacement.js (sin LLM)
    │
-   └─ texto nuevo ────► server/agent/llm.js (Claude, tool use)
+   └─ texto nuevo ────► server/agent/llm.js (Gemini, function calling)
                               │
                               ▼
                     server/agent/actionRegistry.js   ← EL whitelist
@@ -60,7 +60,7 @@ es una función de autorización para ese canal en
 | `server/telegram/adapter.js` | Traduce un `update` de Telegram a la forma genérica del agente; resuelve autorización; envía la respuesta. |
 | `server/telegram/setWebhook.js` | Script de línea de comandos para registrar el webhook (no es un endpoint). |
 | `server/agent/core.js` | Máquina de estados de la conversación: confirmaciones, desambiguación, flujo de fotos/videos, y el camino "texto nuevo → LLM → acción". |
-| `server/agent/llm.js` | Llamada a la API de Anthropic con *tool use*, restringida a las tools del whitelist. |
+| `server/agent/llm.js` | Llamada a la API de Google Gemini (`@google/genai`) con *function calling*, restringida a las tools del whitelist. Free Tier — sin Anthropic, sin billing de Google Cloud. |
 | `server/agent/actionRegistry.js` | **El whitelist**: qué acciones existen, su schema de parámetros para el LLM, y cómo ejecutarlas (siempre vía AdminActions). |
 | `server/agent/resolvers.js` | Resuelve texto libre ("María", "Premium") a un registro real, reutilizando los `list*` de AdminActions. |
 | `server/agent/mediaPlacement.js` | Flujo de fotos/videos, sin LLM: a dónde van, a qué registro se asocian, descarga y ejecución. |
@@ -134,7 +134,7 @@ implementación.
 | `TELEGRAM_BOT_TOKEN` | Token que te da @BotFather al crear el bot. Se usa para llamar a la Bot API (enviar mensajes, descargar archivos). |
 | `TELEGRAM_WEBHOOK_SECRET` | Cadena secreta que inventas tú (ej. una contraseña larga aleatoria). Protege `/api/telegram` de requests que no vengan realmente de Telegram. |
 | `ALLOWED_TELEGRAM_USER_IDS` | IDs numéricos de Telegram autorizados a administrar, separados por coma. Consíguelos escribiéndole a `@userinfobot` desde cada cuenta autorizada. |
-| `ANTHROPIC_API_KEY` | API key de Anthropic — el agente la usa para interpretar lenguaje natural (nunca accede a Supabase). Se consigue en console.anthropic.com. |
+| `GEMINI_API_KEY` | API key de Google Gemini — el agente la usa para interpretar lenguaje natural (nunca accede a Supabase). Se consigue gratis en Google AI Studio (aistudio.google.com/apikey). El proyecto usa el Free Tier — no requiere configurar billing en Google Cloud. |
 
 No hace falta ninguna variable nueva con prefijo `VITE_` — el frontend
 sigue exactamente igual.
