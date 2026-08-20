@@ -1,5 +1,8 @@
 # Arquitectura administrativa server-side (Fase 1)
 
+> Para la Fase 2 (agente de Telegram construido sobre esta base), ver
+> [`AGENT.md`](./AGENT.md) en este mismo directorio.
+
 Este directorio es **nuevo** y vive deliberadamente **fuera de `src/`**, para
 que Vite nunca pueda incluirlo en el bundle del navegador. Es la mitad
 "server" de la arquitectura descrita en la tarea:
