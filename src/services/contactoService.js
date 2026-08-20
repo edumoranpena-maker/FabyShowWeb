@@ -11,7 +11,7 @@
 // de comportamiento.
 // ============================================================================
 
-import { supabase } from '../lib/supabaseClient'
+import { supabase } from '../lib/supabaseClient.js'
 
 const TABLE = 'faby_contacto'
 

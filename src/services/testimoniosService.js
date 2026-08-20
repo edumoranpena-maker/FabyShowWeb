@@ -8,8 +8,8 @@
 // comportamiento.
 // ============================================================================
 
-import { supabase } from '../lib/supabaseClient'
-import { createContentService, uploadContentFile, resolveFileName } from './contentService'
+import { supabase } from '../lib/supabaseClient.js'
+import { createContentService, uploadContentFile, resolveFileName } from './contentService.js'
 
 const TABLE = 'faby_testimonios'
 const BUCKET = 'faby_testimonios'

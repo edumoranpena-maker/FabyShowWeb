@@ -5,8 +5,8 @@
 // createContentService().
 // ============================================================================
 
-import { supabase } from '../lib/supabaseClient'
-import { createContentService } from './contentService'
+import { supabase } from '../lib/supabaseClient.js'
+import { createContentService } from './contentService.js'
 
 const TABLE = 'faby_faqs'
 

@@ -7,8 +7,8 @@
 // igual que antes: mismos imports, mismo comportamiento.
 // ============================================================================
 
-import { supabase } from '../lib/supabaseClient'
-import { createContentService, uploadContentFile, removeContentFile, resolveFileName } from './contentService'
+import { supabase } from '../lib/supabaseClient.js'
+import { createContentService, uploadContentFile, removeContentFile, resolveFileName } from './contentService.js'
 
 const TABLE = 'faby_hero_slides'
 const BUCKET = 'faby_hero'
