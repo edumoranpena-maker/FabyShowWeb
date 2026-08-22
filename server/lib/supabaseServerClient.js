@@ -25,16 +25,16 @@
 import { createClient } from '@supabase/supabase-js'
 
 let cachedClient = null
-let warnedMissingEnv = false
 
 /**
  * Devuelve el cliente Supabase server-side (service_role), creándolo la
- * primera vez que se pide. Devuelve `null` si las variables de entorno
- * todavía no están configuradas — los servicios ya saben tratar un
- * cliente `null` como "Supabase no configurado" y lanzar un error
- * explicativo en vez de fallar en silencio.
+ * primera vez que se pide y cacheándolo para el resto de esta instancia
+ * serverless. Si faltan las variables de entorno, o si `createClient()`
+ * falla, LANZA un error con el motivo específico (no devuelve `null` en
+ * silencio) — así el motivo real llega hasta el log de la acción que
+ * falló, en vez de perderse en el camino como un "no configurado" genérico.
  *
- * @returns {import('@supabase/supabase-js').SupabaseClient|null}
+ * @returns {import('@supabase/supabase-js').SupabaseClient}
  */
 export function getServerSupabaseClient() {
   if (typeof window !== 'undefined') {
@@ -55,36 +55,42 @@ export function getServerSupabaseClient() {
   const supabaseUrl = process.env.SUPABASE_URL?.trim()
   const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim()
 
-  if (!supabaseUrl || !supabaseServiceRoleKey) {
-    if (!warnedMissingEnv) {
-      // Se listan por separado (sin loguear sus valores) para poder ver
-      // en los logs de Vercel EXACTAMENTE cuál de las dos no está
-      // llegando a esta función — "faltan ambas" y "falta solo una"
-      // apuntan a causas distintas (ver server/AGENT.md, sección
-      // Troubleshooting).
-      const missing = []
-      if (!supabaseUrl) missing.push('SUPABASE_URL')
-      if (!supabaseServiceRoleKey) missing.push('SUPABASE_SERVICE_ROLE_KEY')
-      console.error(
-        `Faltan las variables de entorno server-side: ${missing.join(', ')}. ` +
-        'Revisa que estén configuradas para el Environment (Production/Preview) ' +
-        'del deployment que está respondiendo, y que el deployment sea posterior ' +
-        'a haberlas agregado en Vercel (los deployments existentes no las reciben ' +
-        'retroactivamente — hace falta un redeploy). Detalle: server/AGENT.md.'
-      )
-      warnedMissingEnv = true
-    }
-    return null
+  const missing = []
+  if (!supabaseUrl) missing.push('SUPABASE_URL')
+  if (!supabaseServiceRoleKey) missing.push('SUPABASE_SERVICE_ROLE_KEY')
+
+  if (missing.length > 0) {
+    // ANTES este caso devolvía `null` en silencio, y quien llamara (ej.
+    // uploadContentFile en contentService.js) se limitaba a lanzar un
+    // "no está conectado" genérico — esa capa ya no tiene forma de saber
+    // POR QUÉ, porque para cuando recibe `client=null` esa información ya
+    // se perdió. Acá SÍ sabemos exactamente cuál falta, así que fallamos
+    // ya mismo con esa razón puntual. Este mensaje es el que termina
+    // dentro del campo "error" del log agent_admin_action — no un
+    // console.error aparte que nadie está mirando.
+    throw new Error(
+      `Cliente Supabase server-side no disponible: falta ${missing.join(' y ')} ` +
+      'en el entorno de ESTA función. Revisa en Vercel que estén habilitadas ' +
+      'para el Environment que está respondiendo esta invocación (Production/' +
+      'Preview) y que hayas hecho un redeploy después de guardarlas.'
+    )
   }
 
-  cachedClient = createClient(supabaseUrl, supabaseServiceRoleKey, {
-    auth: {
-      // El cliente server-side no debe intentar persistir/renovar una
-      // sesión de usuario — actúa siempre como service_role.
-      persistSession: false,
-      autoRefreshToken: false,
-    },
-  })
+  try {
+    cachedClient = createClient(supabaseUrl, supabaseServiceRoleKey, {
+      auth: {
+        // El cliente server-side no debe intentar persistir/renovar una
+        // sesión de usuario — actúa siempre como service_role.
+        persistSession: false,
+        autoRefreshToken: false,
+      },
+    })
+  } catch (err) {
+    // Si SUPABASE_URL tiene un formato inválido (ej. sin https://, o con
+    // un typo), createClient() puede lanzar acá — también lo queremos ver
+    // en el log de la acción, no perderlo.
+    throw new Error(`No se pudo crear el cliente Supabase server-side: ${err.message}`)
+  }
 
   return cachedClient
 }
@@ -92,5 +98,4 @@ export function getServerSupabaseClient() {
 /** Solo para tests: limpia el cliente cacheado. */
 export function __resetServerSupabaseClientForTests() {
   cachedClient = null
-  warnedMissingEnv = false
 }
