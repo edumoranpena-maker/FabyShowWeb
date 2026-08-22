@@ -188,3 +188,32 @@ hace falta (Hobby y Pro tienen límites distintos).
   (el límite de la Bot API de Telegram para descargar archivos es 20 MB —
   si un video supera eso, la descarga falla y el bot responde con el
   mensaje de error genérico).
+
+## Troubleshooting: "Faltan las variables de entorno SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY"
+
+`server/lib/supabaseServerClient.js` lee estas dos variables directamente
+de `process.env` (nombres exactos, sin prefijo `VITE_`, sin runtime Edge).
+Si ves este error en los logs de Vercel **aunque las variables estén
+configuradas en el proyecto**, el código no es la causa — casi siempre es
+una de estas tres cosas, en orden de probabilidad:
+
+1. **Las variables se agregaron/editaron después del último deploy.**
+   Vercel no las inyecta retroactivamente en un deployment ya construido
+   — hace falta un **redeploy** (Deployments → ⋯ → Redeploy) después de
+   guardarlas.
+2. **Están configuradas para el Environment equivocado.** En Vercel, cada
+   variable se puede scopear a Production / Preview / Development por
+   separado. Si el webhook de Telegram quedó apuntando a una URL de
+   Preview (o a una URL de deployment específica, tipo
+   `proyecto-abc123.vercel.app`, en vez del dominio de Production), esa
+   invocación corre con las variables de Preview, no las de Production.
+   Verifica con `npm run telegram:webhook:status` a qué URL está
+   apuntando el webhook ahora mismo, y confirma que sea tu dominio de
+   Production.
+3. **Nombre o valor con un typo/espacio.** El log ahora te dice
+   exactamente cuál de las dos variables falta (`SUPABASE_URL` y/o
+   `SUPABASE_SERVICE_ROLE_KEY`, nunca sus valores) — si el log dice que
+   falta solo una, revisa esa variable puntual en Vercel.
+
+Ninguna de estas se puede resolver desde el código: son configuración del
+proyecto en Vercel.
