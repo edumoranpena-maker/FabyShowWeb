@@ -49,14 +49,28 @@ export function getServerSupabaseClient() {
 
   if (cachedClient) return cachedClient
 
-  const supabaseUrl = process.env.SUPABASE_URL
-  const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+  // .trim() defensivo: si el valor se pegó en Vercel con un salto de línea
+  // o espacio accidental al final, sigue contando como "presente" para
+  // esta validación mientras no llegue vacío tras limpiarlo.
+  const supabaseUrl = process.env.SUPABASE_URL?.trim()
+  const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim()
 
   if (!supabaseUrl || !supabaseServiceRoleKey) {
     if (!warnedMissingEnv) {
+      // Se listan por separado (sin loguear sus valores) para poder ver
+      // en los logs de Vercel EXACTAMENTE cuál de las dos no está
+      // llegando a esta función — "faltan ambas" y "falta solo una"
+      // apuntan a causas distintas (ver server/AGENT.md, sección
+      // Troubleshooting).
+      const missing = []
+      if (!supabaseUrl) missing.push('SUPABASE_URL')
+      if (!supabaseServiceRoleKey) missing.push('SUPABASE_SERVICE_ROLE_KEY')
       console.error(
-        'Faltan las variables de entorno SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY ' +
-        '(server-side). El cliente administrativo server-side no está disponible todavía.'
+        `Faltan las variables de entorno server-side: ${missing.join(', ')}. ` +
+        'Revisa que estén configuradas para el Environment (Production/Preview) ' +
+        'del deployment que está respondiendo, y que el deployment sea posterior ' +
+        'a haberlas agregado en Vercel (los deployments existentes no las reciben ' +
+        'retroactivamente — hace falta un redeploy). Detalle: server/AGENT.md.'
       )
       warnedMissingEnv = true
     }
