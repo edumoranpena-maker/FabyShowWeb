@@ -34,7 +34,18 @@ const env = (typeof import.meta !== 'undefined' && import.meta.env) || {}
 const supabaseUrl = env.VITE_SUPABASE_URL
 const supabaseAnonKey = env.VITE_SUPABASE_ANON_KEY
 
-if (!supabaseUrl || !supabaseAnonKey) {
+// Este aviso solo tiene sentido cuando el archivo se ejecuta de verdad en
+// un navegador (que es el único contexto donde estas variables VITE_
+// deberían existir). `window` está SIEMPRE definido en un navegador real,
+// así que esto no cambia en nada el comportamiento del frontend/Admin.
+//
+// Sin este guard, importar cualquier src/services/*.js desde server/
+// (server/adminActions/* lo hace, para reusar las fábricas create*Service)
+// dispara este console.error como efecto secundario del import — aunque
+// esa ejecución server-side nunca use este cliente browser, solo el de
+// server/lib/supabaseServerClient.js. Ese ruido en los logs de Vercel es
+// engañoso: no indica que el agente esté usando el cliente equivocado.
+if (typeof window !== 'undefined' && (!supabaseUrl || !supabaseAnonKey)) {
   console.error(
     'Faltan las variables de entorno VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY. ' +
     'Revísalas en Vercel (Project Settings → Environment Variables) o en tu .env.local local.'
