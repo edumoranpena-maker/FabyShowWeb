@@ -44,6 +44,19 @@ export async function sendMessage(chatId, text) {
   return callTelegramApi('sendMessage', { chat_id: chatId, text })
 }
 
+/**
+ * Envía una foto por URL (no hace falta volver a subir bytes: nuestras
+ * fotos de Galería ya son URLs públicas de Supabase Storage). Se usa para
+ * mostrarle al admin las fotos candidatas antes de eliminar (Objetivo 2.8/2.9).
+ */
+export async function sendPhoto(chatId, photoUrl, caption) {
+  return callTelegramApi('sendPhoto', {
+    chat_id: chatId,
+    photo: photoUrl,
+    ...(caption ? { caption } : {}),
+  })
+}
+
 /** Muestra "escribiendo…" mientras se procesa (la llamada al LLM tarda unos segundos). */
 export async function sendTyping(chatId) {
   return callTelegramApi('sendChatAction', { chat_id: chatId, action: 'typing' }).catch(() => {})

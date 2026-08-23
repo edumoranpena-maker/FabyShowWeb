@@ -9,7 +9,7 @@
 
 import { isAuthorized } from '../agent/authorization.js'
 import { handleInboundMessage } from '../agent/core.js'
-import { sendMessage, sendTyping } from './telegramClient.js'
+import { sendMessage, sendPhoto, sendTyping } from './telegramClient.js'
 
 const CHANNEL = 'telegram'
 
@@ -36,8 +36,19 @@ export async function handleTelegramUpdate(update) {
     const inbound = buildInboundFromMessage(message, authorized)
 
     await sendTyping(chatId)
-    const { replyText } = await handleInboundMessage(inbound)
-    await sendMessage(chatId, replyText)
+    const { replyText, photos } = await handleInboundMessage(inbound)
+
+    // Las fotos (ej. candidatas al buscar qué eliminar) van primero, el
+    // texto que las acompaña ("¿cuál quieres eliminar?") después — igual
+    // que se vería si un humano las mandara.
+    if (Array.isArray(photos) && photos.length > 0) {
+      for (const photo of photos) {
+        await sendPhoto(chatId, photo.url, photo.caption).catch((err) => {
+          console.error('[telegram/adapter] No se pudo enviar una foto candidata:', err?.message ?? err)
+        })
+      }
+    }
+    if (replyText) await sendMessage(chatId, replyText)
   } catch (err) {
     console.error('[telegram/adapter] Error procesando update:', err?.message ?? err)
     await sendMessage(chatId, '❌ Ocurrió un error inesperado. Intenta de nuevo en un momento.').catch(() => {})
@@ -59,16 +70,17 @@ function buildInboundFromMessage(message, authorized) {
 
 function extractAttachment(message) {
   if (Array.isArray(message.photo) && message.photo.length > 0) {
-    // Telegram manda varias resoluciones de la misma foto — la última es la de mayor calidad.
+    // Telegram manda varias resoluciones de la misma foto — la última es
+    // la de mayor calidad (photo[].file_id, la versión de mayor resolución).
     const largest = message.photo[message.photo.length - 1]
-    return { kind: 'photo', fileId: largest.file_id }
+    return { kind: 'photo', fileId: largest.file_id, messageId: message.message_id }
   }
   if (message.video) {
-    return { kind: 'video', fileId: message.video.file_id }
+    return { kind: 'video', fileId: message.video.file_id, messageId: message.message_id }
   }
   if (message.document) {
     // No soportado explícitamente en esta fase (point 12: "archivo no soportado").
-    return { kind: 'unsupported', fileId: message.document.file_id }
+    return { kind: 'unsupported', fileId: message.document.file_id, messageId: message.message_id }
   }
   return null
 }
