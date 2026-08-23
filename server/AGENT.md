@@ -217,3 +217,24 @@ una de estas tres cosas, en orden de probabilidad:
 
 Ninguna de estas se puede resolver desde el código: son configuración del
 proyecto en Vercel.
+
+## Identificación de media y eliminación por búsqueda (Galería)
+
+Ampliación sobre la Fase 2A: cuando se sube una foto/video a la Galería, además de `src/categoria/tipo/alto/orden/activo` se guarda:
+
+- `telegram_file_id`, `telegram_message_id`, `telegram_user_id` — origen en Telegram.
+- `alias` — identificación humana corta generada por Gemini analizando la imagen (ej. "Piñata Peppa Pig 23-08"). Para video, o si el análisis visual falla, se usa un alias de respaldo (categoría/sección + fecha) — **nunca bloquea la subida**.
+- `descripcion` — una oración breve, también generada por Gemini (fallback: el caption del usuario, o un texto genérico).
+
+El `id` (uuid) real de Supabase **no cambia de rol** — el alias es solo una forma de referirse al registro en lenguaje natural, nunca reemplaza al id técnico.
+
+Requiere la migración `supabase/migrations/20260821000000_add_media_metadata_to_faby_galeria_items.sql` (aditiva, `ADD COLUMN IF NOT EXISTS`, no toca columnas/datos existentes) — hay que correrla en Supabase antes de que estas columnas existan.
+
+**Subir con todo en un mensaje** (Objetivo 1): el caption que acompaña la foto/video se analiza con Gemini (`extractMediaPlacementIntent` en `llm.js`, function calling — no matching de frase exacta) para extraer destino + categoría/servicio/testimonio de una vez; solo se pregunta lo que falte.
+
+**Eliminar por búsqueda** (Objetivo 2.6-2.9): `deleteGaleriaItem` ahora resuelve con `resolveGaleriaMediaForDeletion` (`resolvers.js`), que reconoce "la última foto/video que envié" (por `telegram_user_id` + `created_at`, no por texto), y si no, busca por alias/descripción/categoría. Nunca elimina sin mostrar primero la(s) foto(s) candidata(s) (`sendPhoto` en `telegramClient.js`) y pedir confirmación explícita — sigue siendo `requiresConfirmation: true`. Con varias coincidencias, el admin puede elegir por número o por nombre, reutilizando el mecanismo de desambiguación ya existente.
+
+**Limitaciones conocidas:**
+- El análisis visual (Gemini Vision) es solo para fotos — los videos no se analizan por frames en esta fase, usan un alias de respaldo.
+- La fecha del alias (`DD-MM`) se calcula en UTC (hora del servidor de Vercel), no en la zona horaria de Perú — puede diferir en un día cerca de la medianoche.
+- Esta identificación (alias/descripción/telegram_*) solo se guarda para Galería — Hero/Servicios/Testimonios no se tocaron (fuera del alcance de esta fase).
