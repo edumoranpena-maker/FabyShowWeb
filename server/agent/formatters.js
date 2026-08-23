@@ -15,6 +15,17 @@ export function describeGaleriaItem(item) {
   return `"${item.categoria}" (${item.tipo}${item.activo ? '' : ', oculto'})`
 }
 
+/**
+ * Igual que describeGaleriaItem, pero pensado para el flujo de
+ * búsqueda/eliminación de media por alias (Objetivo 2): prioriza el alias
+ * humano generado por Gemini ("Piñata Peppa Pig 23-08") sobre la
+ * categoría, con fallback a describeGaleriaItem para filas viejas que
+ * todavía no tengan alias (subidas antes de esta fase).
+ */
+export function describeGaleriaMedia(item) {
+  return item.alias || describeGaleriaItem(item)
+}
+
 export function describeServicio(item) {
   return `"${item.titulo}"${item.activo ? '' : ' (oculto)'}`
 }

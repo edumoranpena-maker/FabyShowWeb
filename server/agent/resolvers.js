@@ -72,6 +72,52 @@ export async function resolveGaleriaItem(match) {
 }
 
 /**
+ * Resolver de búsqueda para ELIMINAR media de la Galería (Objetivo 2.6-2.9
+ * del upgrade) — deliberadamente distinto de resolveGaleriaItem (que
+ * solo mira "categoria", para editar). Este busca por alias/descripción/
+ * categoría a la vez, y reconoce "la última foto/video que envié" como un
+ * caso especial resuelto por fecha real (telegram_user_id + created_at),
+ * no por texto.
+ *
+ * @param {string} match - lo que escribió el usuario (ej. "la última foto", "Spider-Man", "Piñata Peppa Pig 23-08")
+ * @param {{ externalUserId?: string }} [context]
+ */
+export async function resolveGaleriaMediaForDeletion(match, context = {}) {
+  const items = await listGaleriaItems()
+  const n = normalize(match)
+
+  const wantsVideo = /\bvideo\b/.test(n)
+  const wantsPhoto = /\bfoto\b/.test(n)
+  const wantsLatest = /ultim/.test(n) || /recient/.test(n)
+
+  if (wantsLatest) {
+    let candidates = context.externalUserId
+      ? items.filter((it) => it.telegram_user_id === context.externalUserId)
+      : items
+    if (wantsVideo) candidates = candidates.filter((it) => it.tipo === 'video')
+    else if (wantsPhoto) candidates = candidates.filter((it) => it.tipo === 'foto')
+    candidates = candidates
+      .filter((it) => it.created_at)
+      .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+    if (candidates.length === 0) return { record: null, ambiguous: [], notFound: true }
+    return { record: candidates[0], ambiguous: [], notFound: false }
+  }
+
+  // Coincidencia exacta de alias tiene prioridad — permite "elimina Piñata
+  // Peppa Pig 23-08" con el alias completo tal como se lo mostramos antes.
+  const exactAlias = items.filter((it) => it.alias && normalize(it.alias) === n)
+  if (exactAlias.length === 1) return { record: exactAlias[0], ambiguous: [], notFound: false }
+
+  // Búsqueda estructurada simple: alias, descripción o categoría contienen el texto.
+  const fields = ['alias', 'descripcion', 'categoria']
+  const matches = items.filter((it) => fields.some((f) => it[f] && normalize(it[f]).includes(n)))
+
+  if (matches.length === 0) return { record: null, ambiguous: [], notFound: true }
+  if (matches.length === 1) return { record: matches[0], ambiguous: [], notFound: false }
+  return { record: null, ambiguous: matches, notFound: false }
+}
+
+/**
  * Los slides del Hero no tienen un campo de "nombre" — se identifican por
  * posición ("la última", "la primera") o por su número de orden. Resolver
  * deliberadamente más simple que los de arriba.

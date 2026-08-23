@@ -32,6 +32,7 @@ import {
   resolveServicioTargetForPhoto,
   resolveTestimonioTargetForPhoto,
   executeMediaPlacement,
+  parseMediaCaption,
 } from './mediaPlacement.js'
 
 const MATCH_FIELD_BY_SECTION = {
@@ -88,6 +89,16 @@ function describeForConfirmation(entry, params, record) {
   return 'estos datos'
 }
 
+/**
+ * URL de la foto/imagen de un registro, si tiene una — se usa para
+ * mostrarle al admin la foto ANTES de pedir confirmación de borrado
+ * (Objetivo 2.8/2.9: nunca eliminar a ciegas, mostrar qué se va a borrar).
+ * Cubre los distintos nombres de columna de imagen según la sección.
+ */
+function photoUrlForRecord(record) {
+  return record?.src ?? record?.image_url ?? record?.imagen_url ?? record?.foto_url ?? null
+}
+
 // ---------------------------------------------------------------------------
 // Ejecución de una acción del registro, con logging. SIEMPRE pasa por acá
 // (nunca se llama a AdminActions directamente desde otro lugar del core).
@@ -140,8 +151,14 @@ function buildConfirmation({ actionName, entry, params, record }) {
     params,
     recordId: record?.id ?? null,
     record: record ?? null,
+    photoUrl: photoUrlForRecord(record),
     prompt: `⚠️ ¿Confirmas ${verbFor(actionName)} ${summary}? Responde "sí" o "no".`,
   }
+}
+
+/** Arma el `photos` opcional que espera el adaptador (Telegram u otro canal), a partir de una confirmación ya construida. */
+function photosForConfirmation(confirmation) {
+  return confirmation.photoUrl ? [{ url: confirmation.photoUrl }] : undefined
 }
 
 // ---------------------------------------------------------------------------
@@ -216,17 +233,21 @@ async function continuePendingFlow({ channel, externalUserId, pending, text }) {
     }
 
     case 'disambiguation': {
-      const chosen = resolveDisambiguation(pending, text)
+      const entry = getActionEntry(pending.actionName)
+      if (!entry) {
+        clearPendingState(channel, externalUserId)
+        return { replyText: '❌ Esa acción ya no está disponible.' }
+      }
+      const matchField = entry.disambiguationField ?? MATCH_FIELD_BY_SECTION[pending.section]
+      const chosen = resolveDisambiguation(pending, text, matchField)
       if (!chosen) {
         return { replyText: 'No identifiqué cuál de las opciones. Responde con el número o el nombre exacto.' }
       }
       clearPendingState(channel, externalUserId)
-      const entry = getActionEntry(pending.actionName)
-      if (!entry) return { replyText: '❌ Esa acción ya no está disponible.' }
       if (entry.requiresConfirmation) {
         const confirmation = buildConfirmation({ actionName: pending.actionName, entry, params: pending.params, record: chosen })
         setPendingState(channel, externalUserId, confirmation)
-        return { replyText: confirmation.prompt }
+        return { replyText: confirmation.prompt, photos: photosForConfirmation(confirmation) }
       }
       const message = await runRegistryAction({
         channel,
@@ -288,12 +309,12 @@ async function continuePendingFlow({ channel, externalUserId, pending, text }) {
   }
 }
 
-function resolveDisambiguation(pending, text) {
+function resolveDisambiguation(pending, text, matchField) {
   const idx = Number(text.trim())
   if (!Number.isNaN(idx) && idx >= 1 && idx <= pending.options.length) {
     return pending.options[idx - 1]
   }
-  const field = MATCH_FIELD_BY_SECTION[pending.section]
+  const field = matchField ?? MATCH_FIELD_BY_SECTION[pending.section]
   const n = normalize(text)
   return pending.options.find((o) => normalize(o[field]).includes(n)) ?? null
 }
@@ -363,7 +384,7 @@ async function handleFreshTextMessage({ channel, externalUserId, text, context =
     if (entry.requiresConfirmation) {
       const confirmation = buildConfirmation({ actionName: intent.name, entry, params, record: null })
       setPendingState(channel, externalUserId, confirmation)
-      return { replyText: confirmation.prompt }
+      return { replyText: confirmation.prompt, photos: photosForConfirmation(confirmation) }
     }
     const message = await runRegistryAction({ channel, externalUserId, actionName: intent.name, entry, params, record: null })
     return { replyText: message }
@@ -371,7 +392,7 @@ async function handleFreshTextMessage({ channel, externalUserId, text, context =
 
   let resolved
   try {
-    resolved = await entry.resolve(params)
+    resolved = await entry.resolve(params, { channel, externalUserId })
   } catch (err) {
     logAgentEvent('resolve_error', { channel, externalUserId, action: intent.name, error: String(err?.message ?? err).slice(0, 200) })
     return { replyText: '❌ No pude buscar ese elemento. Intenta de nuevo en un momento.' }
@@ -388,13 +409,23 @@ async function handleFreshTextMessage({ channel, externalUserId, text, context =
       options: resolved.ambiguous,
       section: entry.section,
     })
-    return { replyText: formatAmbiguous(resolved.ambiguous, DESCRIBER_BY_SECTION[entry.section]) }
+    // Para búsquedas de media (ej. eliminar por descripción), mandamos las
+    // fotos candidatas para que el admin las reconozca visualmente
+    // (Objetivo 2.8) — para las demás secciones (paquetes, servicios de
+    // texto, etc.) el listado de texto de siempre es suficiente.
+    const photos =
+      entry.section === 'galeria'
+        ? resolved.ambiguous
+            .filter((it) => photoUrlForRecord(it))
+            .map((it) => ({ url: photoUrlForRecord(it), caption: entry.describeTarget(it) }))
+        : undefined
+    return { replyText: formatAmbiguous(resolved.ambiguous, entry.describeTarget), photos }
   }
 
   if (entry.requiresConfirmation) {
     const confirmation = buildConfirmation({ actionName: intent.name, entry, params, record: resolved.record })
     setPendingState(channel, externalUserId, confirmation)
-    return { replyText: confirmation.prompt }
+    return { replyText: confirmation.prompt, photos: photosForConfirmation(confirmation) }
   }
 
   const message = await runRegistryAction({ channel, externalUserId, actionName: intent.name, entry, params, record: resolved.record })
@@ -405,17 +436,22 @@ async function handleFreshTextMessage({ channel, externalUserId, text, context =
 // Flujo de fotos/videos.
 // ---------------------------------------------------------------------------
 async function startMediaFlow({ channel, externalUserId, attachment, captionText }) {
-  const section = captionText ? detectDestinationFromText(captionText) : null
+  // Objetivo 1: si el mensaje ya trae destino (y de paso categoría/nombre
+  // de servicio/testimonio), no hay que preguntar nada de eso — se extrae
+  // con Gemini/function calling (no matching de frase exacta), reutilizando
+  // el mismo mecanismo que ya usa resolveIntent() para el resto del agente.
+  const extracted = await parseMediaCaption(captionText)
+  const section = extracted?.section ?? (captionText ? detectDestinationFromText(captionText) : null)
 
   if (!section) {
     setPendingState(channel, externalUserId, { type: 'media_awaiting_destination', attachment })
     return { replyText: '¿Dónde quieres ponerla? (Hero, Galería, Servicios o Testimonios)' }
   }
 
-  return advanceMediaFlowWithDestination({ channel, externalUserId, attachment, section })
+  return advanceMediaFlowWithDestination({ channel, externalUserId, attachment, section, prefill: extracted, captionText })
 }
 
-async function advanceMediaFlowWithDestination({ channel, externalUserId, attachment, section }) {
+async function advanceMediaFlowWithDestination({ channel, externalUserId, attachment, section, prefill = null, captionText = null }) {
   const invalidReason = validateAttachmentForSection(attachment.kind, section)
   if (invalidReason) {
     setPendingState(channel, externalUserId, { type: 'media_awaiting_destination', attachment })
@@ -429,16 +465,30 @@ async function advanceMediaFlowWithDestination({ channel, externalUserId, attach
   }
 
   if (section === 'galeria') {
+    if (prefill?.categoria) {
+      // Destino + categoría ya vinieron en el mismo mensaje: dato
+      // completo, se ejecuta directo (Objetivo 1) — sin preguntar nada.
+      const placement = { attachment, section: 'galeria', extra: { categoria: prefill.categoria, captionText } }
+      return finalizeMediaPlacement({ channel, externalUserId, placement })
+    }
     setPendingState(channel, externalUserId, { type: 'media_awaiting_categoria', attachment })
     return { replyText: '¿Qué categoría le pongo a este elemento de la Galería?' }
   }
 
   if (section === 'servicios') {
+    if (prefill?.servicioNombre) {
+      const result = await resolveServicioTargetForPhoto(prefill.servicioNombre)
+      return handleServicioTargetResult({ channel, externalUserId, attachment, result })
+    }
     setPendingState(channel, externalUserId, { type: 'media_awaiting_target_servicio', attachment })
     return { replyText: '¿A qué servicio pertenece esta foto? Dime el nombre.' }
   }
 
   // testimonios
+  if (prefill?.testimonioNombre) {
+    const result = await resolveTestimonioTargetForPhoto(prefill.testimonioNombre)
+    return handleTestimonioTargetResult({ channel, externalUserId, attachment, result })
+  }
   setPendingState(channel, externalUserId, { type: 'media_awaiting_target_testimonio', attachment })
   return { replyText: '¿De qué testimonio es esta foto? Dime el nombre de la persona.' }
 }
@@ -495,6 +545,10 @@ async function handleTestimonioTargetResult({ channel, externalUserId, attachmen
  */
 async function finalizeMediaPlacement({ channel, externalUserId, placement }) {
   clearPendingState(channel, externalUserId)
-  const message = await runMediaPlacement({ channel, externalUserId, placement })
+  // externalUserId viaja con el placement (no solo con la llamada) porque
+  // executeMediaPlacement lo necesita para guardar telegram_user_id en el
+  // registro de Galería (Objetivo 2.1/2.6 — permite luego resolver "la
+  // última foto que TE envié" acotado a este usuario).
+  const message = await runMediaPlacement({ channel, externalUserId, placement: { ...placement, externalUserId } })
   return { replyText: message }
 }

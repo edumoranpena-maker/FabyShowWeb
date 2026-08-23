@@ -120,3 +120,130 @@ export async function resolveIntent(userText, context = null) {
   const text = (response.text ?? '').trim()
   return { type: 'text', text: text || 'No entendí bien esa instrucción, ¿puedes reformularla?' }
 }
+
+// ============================================================================
+// Extracción de destino de un caption de foto/video (Objetivo 1 del
+// upgrade de identificación de media). Es una llamada de Gemini SEPARADA
+// de resolveIntent(): no compite con el whitelist de AdminActions (subir
+// no es una AdminAction en sí, la maneja mediaPlacement.js de forma
+// determinista) — esto SOLO extrae texto→datos estructurados, reutilizando
+// el mismo cliente/modelo/mecanismo de function calling.
+// ============================================================================
+
+const MEDIA_PLACEMENT_TOOL = {
+  name: 'extractMediaPlacement',
+  description: 'Extrae a dónde debe ir una foto/video de Faby Show y sus datos, a partir del texto que acompañó el envío.',
+  parametersJsonSchema: {
+    type: 'object',
+    properties: {
+      section: {
+        type: 'string',
+        enum: ['hero', 'galeria', 'servicios', 'testimonios'],
+        description: 'A qué sección va el archivo, si el texto lo dice (ej. "Galería", "Hero", "portada").',
+      },
+      categoria: { type: 'string', description: 'Categoría de Galería, si el texto la menciona (ej. "Decoración").' },
+      servicioNombre: { type: 'string', description: 'Nombre del servicio, si el destino es Servicios y el texto lo menciona.' },
+      testimonioNombre: { type: 'string', description: 'Nombre de la persona del testimonio, si el destino es Testimonios y el texto lo menciona.' },
+    },
+    additionalProperties: false,
+  },
+}
+
+const MEDIA_PLACEMENT_SYSTEM_PROMPT = `Analiza el texto que un administrador de Faby Show escribió junto con una foto o video que está subiendo. Extrae SOLO los datos que el texto realmente menciona, explícita o claramente. No inventes ni asumas datos que el texto no da — si no menciona un dato, omite esa propiedad por completo.`
+
+/**
+ * @param {string} captionText - el texto/caption que acompañó la foto/video
+ * @returns {Promise<{ section?: string, categoria?: string, servicioNombre?: string, testimonioNombre?: string }>}
+ */
+export async function extractMediaPlacementIntent(captionText) {
+  const ai = getClient()
+
+  let response
+  try {
+    response = await ai.models.generateContent({
+      model: GEMINI_MODEL,
+      contents: [{ role: 'user', parts: [{ text: captionText }] }],
+      config: {
+        systemInstruction: MEDIA_PLACEMENT_SYSTEM_PROMPT,
+        tools: [{ functionDeclarations: [MEDIA_PLACEMENT_TOOL] }],
+        toolConfig: { functionCallingConfig: { mode: 'ANY', allowedFunctionNames: ['extractMediaPlacement'] } },
+      },
+    })
+  } catch (err) {
+    throw new Error(`Fallo la extracción de destino del media: ${err?.message ?? err}`)
+  }
+
+  const call = (response.functionCalls ?? [])[0]
+  return call?.args ?? {}
+}
+
+// ============================================================================
+// Descripción visual de una foto recién subida (Objetivo 2.3/2.4 del
+// upgrade): genera un alias corto + descripción breve analizando la
+// imagen con Gemini (multimodal). Reutiliza el mismo cliente/modelo.
+// ============================================================================
+
+const DESCRIBE_MEDIA_TOOL = {
+  name: 'describeMedia',
+  description: 'Describe brevemente el contenido visual de una imagen para un catálogo interno de contenido.',
+  parametersJsonSchema: {
+    type: 'object',
+    properties: {
+      alias_base: {
+        type: 'string',
+        description:
+          '2 a 4 palabras en español describiendo el contenido principal de la imagen, SIN fecha (la fecha se agrega aparte). Ej: "Piñata Peppa Pig", "Arco de Globos Frozen", "Decoración Spider-Man".',
+      },
+      descripcion: {
+        type: 'string',
+        description: 'Una oración breve (máximo 15 palabras) describiendo la imagen para uso interno del catálogo.',
+      },
+    },
+    required: ['alias_base', 'descripcion'],
+    additionalProperties: false,
+  },
+}
+
+const DESCRIBE_MEDIA_SYSTEM_PROMPT = `Eres un asistente que cataloga fotos para Faby Show, una empresa de shows y decoración para fiestas infantiles. Describe brevemente el contenido visual de la imagen que se te muestra, en español, para que un administrador pueda encontrarla después buscando por texto.`
+
+/**
+ * @param {{ imageBase64: string, mimeType: string, categoria?: string, section?: string, captionText?: string }} params
+ * @returns {Promise<{ aliasBase: string, descripcion: string }>}
+ */
+export async function generateMediaDescription({ imageBase64, mimeType, categoria, section, captionText }) {
+  const ai = getClient()
+
+  const contextLine = [
+    categoria ? `Categoría: ${categoria}.` : null,
+    section ? `Sección: ${section}.` : null,
+    captionText ? `El usuario escribió al subirla: "${captionText}".` : null,
+  ]
+    .filter(Boolean)
+    .join(' ')
+
+  let response
+  try {
+    response = await ai.models.generateContent({
+      model: GEMINI_MODEL,
+      contents: [
+        {
+          role: 'user',
+          parts: [{ inlineData: { mimeType, data: imageBase64 } }, { text: contextLine || 'Describe esta imagen.' }],
+        },
+      ],
+      config: {
+        systemInstruction: DESCRIBE_MEDIA_SYSTEM_PROMPT,
+        tools: [{ functionDeclarations: [DESCRIBE_MEDIA_TOOL] }],
+        toolConfig: { functionCallingConfig: { mode: 'ANY', allowedFunctionNames: ['describeMedia'] } },
+      },
+    })
+  } catch (err) {
+    throw new Error(`Fallo el análisis visual de la imagen: ${err?.message ?? err}`)
+  }
+
+  const call = (response.functionCalls ?? [])[0]
+  if (!call?.args?.alias_base) {
+    throw new Error('Gemini no devolvió una descripción utilizable para esta imagen.')
+  }
+  return { aliasBase: call.args.alias_base, descripcion: call.args.descripcion ?? '' }
+}

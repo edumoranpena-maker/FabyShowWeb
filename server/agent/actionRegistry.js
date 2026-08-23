@@ -29,6 +29,7 @@ import { extractStoragePathFromPublicUrl } from '../../src/services/contentServi
 import {
   resolveHeroSlide,
   resolveGaleriaItem,
+  resolveGaleriaMediaForDeletion,
   resolveServicio,
   resolvePaquete,
   resolveTestimonio,
@@ -37,6 +38,7 @@ import {
 import {
   describeHeroSlide,
   describeGaleriaItem,
+  describeGaleriaMedia,
   describeServicio,
   describePaquete,
   describeTestimonio,
@@ -173,17 +175,27 @@ export const actionRegistry = {
     kind: 'write',
     requiresConfirmation: true, // destructiva: borra el registro y/o el archivo de Storage
     section: 'galeria',
+    // Campo usado por core.js para re-resolver la elección del usuario
+    // cuando hay varias coincidencias ("2", "la primera", o el alias
+    // exacto) — acá es "alias" en vez de "categoria" porque este flujo
+    // busca por identificación humana, no por categoría (ver resolvers.js).
+    disambiguationField: 'alias',
     llmTool: {
       name: 'deleteGaleriaItem',
-      description: 'Elimina un elemento de la Galería (foto o video, borra el archivo y el registro).',
+      description:
+        'Elimina una foto o video de la Galería. El usuario puede identificarla por su alias ("Piñata Peppa Pig 23-08"), por su descripción/contenido ("la de Spider-Man"), por categoría, o pidiendo "la última foto/video que envié".',
       input_schema: {
         type: 'object',
-        properties: { match: matchProp('Categoría del elemento a eliminar, ej. "Animación".') },
+        properties: {
+          match: matchProp(
+            'Cómo identificar la foto/video: su alias, una descripción de lo que muestra, su categoría, o "la última foto/video que envié".'
+          ),
+        },
         required: ['match'],
       },
     },
-    resolve: (params) => resolveGaleriaItem(params.match),
-    describeTarget: describeGaleriaItem,
+    resolve: (params, context) => resolveGaleriaMediaForDeletion(params.match, context),
+    describeTarget: describeGaleriaMedia,
     run: async (record) => AdminActions.deleteGaleriaItem(record.id),
     successMessage: () => '✅ Elemento de la Galería eliminado.',
   },
