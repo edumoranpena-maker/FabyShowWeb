@@ -26,17 +26,16 @@ import { getGeminiApiKey } from '../lib/env.js'
 import { getLlmTools } from './actionRegistry.js'
 
 /**
- * Modelo de Gemini a usar. `gemini-2.5-flash` tiene Free Tier (con límites
- * de requests/minuto y por día — más que suficientes para un bot
- * administrativo de uso interno) y suficiente calidad de razonamiento
- * para elegir bien entre ~30 tools en español.
+ * Modelo de Gemini a usar. `gemini-3.6-flash` es el modelo oficial
+ * designado para el agente: soporta function calling (necesario para que
+ * Gemini elija entre las ~30 tools del whitelist) y tiene suficiente
+ * calidad de razonamiento para resolver instrucciones en español.
  *
- * Si en algún momento se necesita más margen de cuota gratuita a cambio
- * de algo menos de calidad, `gemini-2.5-flash-lite` es la alternativa más
- * liviana dentro del mismo Free Tier — bastaría con cambiar esta
- * constante, nada más en el archivo depende del nombre del modelo.
+ * Si en algún momento se necesita otra variante (más barata, más rápida,
+ * etc.), bastaría con cambiar esta constante — nada más en el archivo
+ * depende del nombre del modelo.
  */
-export const GEMINI_MODEL = 'gemini-2.5-flash'
+export const GEMINI_MODEL = 'gemini-3.6-flash'
 
 const SYSTEM_PROMPT = `Eres el intérprete de intención del agente administrativo de Faby Show (empresa de shows infantiles).
 
