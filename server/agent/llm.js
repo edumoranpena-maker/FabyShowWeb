@@ -26,17 +26,17 @@ import { getGeminiApiKey } from '../lib/env.js'
 import { getLlmTools } from './actionRegistry.js'
 
 /**
- * Modelo de Gemini a usar. `gemini-3.6-flash` tiene Free Tier (con límites
+ * Modelo de Gemini a usar. `gemini-2.5-flash` tiene Free Tier (con límites
  * de requests/minuto y por día — más que suficientes para un bot
  * administrativo de uso interno) y suficiente calidad de razonamiento
  * para elegir bien entre ~30 tools en español.
  *
  * Si en algún momento se necesita más margen de cuota gratuita a cambio
- * de algo menos de calidad, `gemini-3.6-flash` es la alternativa más
+ * de algo menos de calidad, `gemini-2.5-flash-lite` es la alternativa más
  * liviana dentro del mismo Free Tier — bastaría con cambiar esta
  * constante, nada más en el archivo depende del nombre del modelo.
  */
-export const GEMINI_MODEL = 'gemini-3.6-flash'
+export const GEMINI_MODEL = 'gemini-2.5-flash'
 
 const SYSTEM_PROMPT = `Eres el intérprete de intención del agente administrativo de Faby Show (empresa de shows infantiles).
 
@@ -46,7 +46,9 @@ Si el mensaje es una pregunta de lectura ("¿qué...?", "¿cuánto...?", "muést
 
 Si el mensaje no tiene relación con administrar el contenido de Faby Show (saludo, charla casual, pregunta de otro tema), responde brevemente en texto plano, sin llamar ninguna función, aclarando con amabilidad que solo puedes ayudar a administrar el contenido de Faby Show (Hero, Galería, Servicios, Paquetes, Testimonios, FAQ, Contacto).
 
-Nunca menciones Supabase, bases de datos, SQL, tokens, service_role ni ningún detalle técnico interno — el usuario solo debe ver lenguaje natural sobre su contenido.`
+Nunca menciones Supabase, bases de datos, SQL, tokens, service_role ni ningún detalle técnico interno — el usuario solo debe ver lenguaje natural sobre su contenido.
+
+CONTEXTO DE TURNO ANTERIOR: si el historial incluye un turno tuyo anterior (una pregunta tuya) y el mensaje nuevo del usuario es corto y parece responderla (ej. contestó solo el dato que le pediste), COMBINA ambos turnos y llama la función correspondiente con todos los datos juntos — no le pidas de nuevo el mismo dato ni trates el mensaje nuevo como aislado. Si en cambio el mensaje nuevo claramente habla de otra cosa, ignora el turno anterior y trata el mensaje como una instrucción nueva e independiente.`
 
 let cachedClient = null
 
@@ -77,16 +79,29 @@ function buildGeminiTools() {
 
 /**
  * @param {string} userText
+ * @param {{ previousUserText: string, previousModelText: string }|null} [context] -
+ *   turno anterior (pregunta de Gemini + lo que el usuario respondía) cuando
+ *   este mensaje puede estar completando una intención pendiente de texto
+ *   (ver conversationStore.js, estado `pending_text_intent` en core.js).
+ *   Parámetro opcional — omitirlo reproduce exactamente el comportamiento
+ *   anterior de esta función.
  * @returns {Promise<{ type: 'tool', name: string, input: object } | { type: 'text', text: string }>}
  */
-export async function resolveIntent(userText) {
+export async function resolveIntent(userText, context = null) {
   const ai = getClient()
+
+  const contents = []
+  if (context?.previousUserText && context?.previousModelText) {
+    contents.push({ role: 'user', parts: [{ text: context.previousUserText }] })
+    contents.push({ role: 'model', parts: [{ text: context.previousModelText }] })
+  }
+  contents.push({ role: 'user', parts: [{ text: userText }] })
 
   let response
   try {
     response = await ai.models.generateContent({
       model: GEMINI_MODEL,
-      contents: [{ role: 'user', parts: [{ text: userText }] }],
+      contents,
       config: {
         systemInstruction: SYSTEM_PROMPT,
         tools: buildGeminiTools(),

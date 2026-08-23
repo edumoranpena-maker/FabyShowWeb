@@ -28,7 +28,6 @@ import { logAdminAction, logAgentEvent } from './logger.js'
 import { formatAmbiguous, describeHeroSlide, describeGaleriaItem, describeServicio, describePaquete, describeTestimonio, describeFaq } from './formatters.js'
 import {
   detectDestinationFromText,
-  sectionLabel,
   validateAttachmentForSection,
   resolveServicioTargetForPhoto,
   resolveTestimonioTargetForPhoto,
@@ -216,19 +215,6 @@ async function continuePendingFlow({ channel, externalUserId, pending, text }) {
       return { replyText: `Todavía tengo pendiente esto:\n\n${pending.prompt}` }
     }
 
-    case 'media_awaiting_confirmation': {
-      if (isAffirmative(text)) {
-        clearPendingState(channel, externalUserId)
-        const message = await runMediaPlacement({ channel, externalUserId, placement: pending.placement })
-        return { replyText: message }
-      }
-      if (isNegative(text)) {
-        clearPendingState(channel, externalUserId)
-        return { replyText: '❌ Operación cancelada. No se agregó el archivo.' }
-      }
-      return { replyText: `Todavía tengo pendiente esto:\n\n${pending.prompt}` }
-    }
-
     case 'disambiguation': {
       const chosen = resolveDisambiguation(pending, text)
       if (!chosen) {
@@ -237,9 +223,33 @@ async function continuePendingFlow({ channel, externalUserId, pending, text }) {
       clearPendingState(channel, externalUserId)
       const entry = getActionEntry(pending.actionName)
       if (!entry) return { replyText: '❌ Esa acción ya no está disponible.' }
-      const confirmation = buildConfirmation({ actionName: pending.actionName, entry, params: pending.params, record: chosen })
-      setPendingState(channel, externalUserId, confirmation)
-      return { replyText: confirmation.prompt }
+      if (entry.requiresConfirmation) {
+        const confirmation = buildConfirmation({ actionName: pending.actionName, entry, params: pending.params, record: chosen })
+        setPendingState(channel, externalUserId, confirmation)
+        return { replyText: confirmation.prompt }
+      }
+      const message = await runRegistryAction({
+        channel,
+        externalUserId,
+        actionName: pending.actionName,
+        entry,
+        params: pending.params,
+        record: chosen,
+      })
+      return { replyText: message }
+    }
+
+    case 'pending_text_intent': {
+      // Se consume de una sola vez: handleFreshTextMessage vuelve a
+      // guardar un `pending_text_intent` nuevo si Gemini todavía no
+      // termina de resolver la acción con este mensaje.
+      clearPendingState(channel, externalUserId)
+      return handleFreshTextMessage({
+        channel,
+        externalUserId,
+        text,
+        context: { previousUserText: pending.previousUserText, previousModelText: pending.previousModelText },
+      })
     }
 
     case 'media_awaiting_destination': {
@@ -252,8 +262,13 @@ async function continuePendingFlow({ channel, externalUserId, pending, text }) {
 
     case 'media_awaiting_categoria': {
       const categoria = text.trim()
+      if (!categoria) {
+        return { replyText: '¿Qué categoría le pongo a este elemento de la Galería?' }
+      }
+      // Ya tenemos adjunto + destino + categoría: dato completo, se
+      // ejecuta directo (Fase 2A) — sin pedir "¿la agrego?".
       const placement = { attachment: pending.attachment, section: 'galeria', extra: { categoria } }
-      return promptMediaConfirmation({ channel, externalUserId, placement })
+      return finalizeMediaPlacement({ channel, externalUserId, placement })
     }
 
     case 'media_awaiting_target_servicio': {
@@ -284,20 +299,42 @@ function resolveDisambiguation(pending, text) {
 }
 
 // ---------------------------------------------------------------------------
-// Mensaje de texto nuevo (sin flujo pendiente) → LLM → acción del whitelist.
+// Mensaje de texto nuevo (sin flujo pendiente, o completando un
+// `pending_text_intent`) → LLM → acción del whitelist.
 // ---------------------------------------------------------------------------
-async function handleFreshTextMessage({ channel, externalUserId, text }) {
+async function handleFreshTextMessage({ channel, externalUserId, text, context = null }) {
   let intent
   try {
-    intent = await resolveIntent(text)
+    intent = await resolveIntent(text, context)
   } catch (err) {
     logAgentEvent('llm_error', { channel, externalUserId, error: String(err?.message ?? err).slice(0, 200) })
     return { replyText: '❌ No pude interpretar tu mensaje en este momento. Intenta de nuevo en un momento.' }
   }
 
   if (intent.type === 'text') {
+    // Todavía no se resolvió ninguna acción — puede ser que a Gemini le
+    // falte un dato para completarla (preguntó algo), o una respuesta
+    // puramente conversacional. Guardamos este intercambio como contexto
+    // de un solo turno: si el próximo mensaje lo completa, se lo pasamos
+    // de vuelta a Gemini junto con el mensaje nuevo para que arme la
+    // acción entera (ver llm.js). Si el usuario cambia de tema, Gemini ve
+    // este mismo contexto y, por instrucción explícita del system prompt,
+    // no fuerza la acción vieja.
+    //
+    // `previousUserText` se acumula (no se reemplaza) para sobrevivir más
+    // de un intercambio de aclaración, con un tope de 300 caracteres para
+    // no mandarle a Gemini un historial cada vez más largo.
+    const accumulatedUserText = context ? `${context.previousUserText} ${text}`.slice(-300) : text
+    setPendingState(channel, externalUserId, {
+      type: 'pending_text_intent',
+      previousUserText: accumulatedUserText,
+      previousModelText: intent.text,
+    })
     return { replyText: intent.text }
   }
+
+  // Se resolvió una acción → cualquier contexto de texto pendiente ya cumplió su función.
+  clearPendingState(channel, externalUserId)
 
   const entry = getActionEntry(intent.name)
   if (!entry) {
@@ -319,11 +356,17 @@ async function handleFreshTextMessage({ channel, externalUserId, text }) {
     return { replyText: entry.formatResult(data) }
   }
 
-  // kind === 'write'
+  // kind === 'write'. Regla (Fase 2): dato completo + acción no destructiva
+  // → ejecutar directo. Solo las marcadas `requiresConfirmation: true` en
+  // actionRegistry.js (delete*/remove*Image/remove*Media) piden confirmación.
   if (!entry.resolve) {
-    const confirmation = buildConfirmation({ actionName: intent.name, entry, params, record: null })
-    setPendingState(channel, externalUserId, confirmation)
-    return { replyText: confirmation.prompt }
+    if (entry.requiresConfirmation) {
+      const confirmation = buildConfirmation({ actionName: intent.name, entry, params, record: null })
+      setPendingState(channel, externalUserId, confirmation)
+      return { replyText: confirmation.prompt }
+    }
+    const message = await runRegistryAction({ channel, externalUserId, actionName: intent.name, entry, params, record: null })
+    return { replyText: message }
   }
 
   let resolved
@@ -348,9 +391,14 @@ async function handleFreshTextMessage({ channel, externalUserId, text }) {
     return { replyText: formatAmbiguous(resolved.ambiguous, DESCRIBER_BY_SECTION[entry.section]) }
   }
 
-  const confirmation = buildConfirmation({ actionName: intent.name, entry, params, record: resolved.record })
-  setPendingState(channel, externalUserId, confirmation)
-  return { replyText: confirmation.prompt }
+  if (entry.requiresConfirmation) {
+    const confirmation = buildConfirmation({ actionName: intent.name, entry, params, record: resolved.record })
+    setPendingState(channel, externalUserId, confirmation)
+    return { replyText: confirmation.prompt }
+  }
+
+  const message = await runRegistryAction({ channel, externalUserId, actionName: intent.name, entry, params, record: resolved.record })
+  return { replyText: message }
 }
 
 // ---------------------------------------------------------------------------
@@ -375,8 +423,9 @@ async function advanceMediaFlowWithDestination({ channel, externalUserId, attach
   }
 
   if (section === 'hero') {
-    const placement = { attachment, section: 'hero', extra: {} }
-    return promptMediaConfirmation({ channel, externalUserId, placement })
+    // Ya tenemos todo lo necesario (adjunto + destino): dato completo,
+    // se ejecuta directo (Fase 2A) — sin pedir "¿la agrego?".
+    return finalizeMediaPlacement({ channel, externalUserId, placement: { attachment, section: 'hero', extra: {} } })
   }
 
   if (section === 'galeria') {
@@ -405,11 +454,11 @@ async function handleServicioTargetResult({ channel, externalUserId, attachment,
       section: 'servicios',
       extra: { mode: 'update', recordId: result.record.id, titulo: result.record.titulo },
     }
-    return promptMediaConfirmation({ channel, externalUserId, placement })
+    return finalizeMediaPlacement({ channel, externalUserId, placement })
   }
   if (result.mode === 'create') {
     const placement = { attachment, section: 'servicios', extra: { mode: 'create', titulo: result.titulo } }
-    return promptMediaConfirmation({ channel, externalUserId, placement })
+    return finalizeMediaPlacement({ channel, externalUserId, placement })
   }
   setPendingState(channel, externalUserId, { type: 'media_awaiting_target_servicio', attachment })
   return { replyText: 'No entendí el nombre del servicio. ¿Puedes repetirlo?' }
@@ -426,7 +475,7 @@ async function handleTestimonioTargetResult({ channel, externalUserId, attachmen
       section: 'testimonios',
       extra: { recordId: result.record.id, nombre: result.record.nombre },
     }
-    return promptMediaConfirmation({ channel, externalUserId, placement })
+    return finalizeMediaPlacement({ channel, externalUserId, placement })
   }
   if (result.mode === 'not_found') {
     clearPendingState(channel, externalUserId)
@@ -439,14 +488,13 @@ async function handleTestimonioTargetResult({ channel, externalUserId, attachmen
   return { replyText: 'No entendí el nombre. ¿Puedes repetirlo?' }
 }
 
-function promptMediaConfirmation({ channel, externalUserId, placement }) {
-  const kindLabel = placement.attachment.kind === 'video' ? 'este video' : 'esta foto'
-  const destLabel = sectionLabel(placement.section)
-  let extraLabel = ''
-  if (placement.extra?.categoria) extraLabel = ` (categoría "${placement.extra.categoria}")`
-  else if (placement.extra?.titulo) extraLabel = ` (${placement.extra.mode === 'create' ? 'nuevo servicio' : 'servicio'} "${placement.extra.titulo}")`
-  else if (placement.extra?.nombre) extraLabel = ` (testimonio de ${placement.extra.nombre})`
-  const prompt = `¿Agrego ${kindLabel} a ${destLabel}${extraLabel}?`
-  setPendingState(channel, externalUserId, { type: 'media_awaiting_confirmation', placement, prompt })
-  return { replyText: prompt }
+/**
+ * Ejecuta la subida/colocación de un archivo ya identificado por completo
+ * (adjunto + destino + lo que haga falta por sección) — sin pedir
+ * confirmación (Fase 2A: la subida no es una acción destructiva).
+ */
+async function finalizeMediaPlacement({ channel, externalUserId, placement }) {
+  clearPendingState(channel, externalUserId)
+  const message = await runMediaPlacement({ channel, externalUserId, placement })
+  return { replyText: message }
 }

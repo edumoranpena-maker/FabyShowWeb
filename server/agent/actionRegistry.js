@@ -17,9 +17,11 @@
 // (sin LLM), porque requieren bytes reales que el modelo no tiene forma de
 // producir. Ver AGENT.md para el detalle de esta separación.
 //
-// `kind: 'write'` implica SIEMPRE confirmación antes de ejecutarse — lo
-// decide el núcleo (core.js), no cada acción individualmente, para que la
-// regla de confirmación sea imposible de saltarse por accidente.
+// `requiresConfirmation: true` es lo único que decide si una escritura pide
+// confirmación antes de ejecutarse — lo evalúa el núcleo (core.js), no cada
+// acción individualmente. Por defecto (sin el flag) una escritura con datos
+// completos se EJECUTA DIRECTO; solo las que borran contenido o archivos de
+// Storage (`delete*`, `remove*Image`, `remove*Media`) lo llevan.
 // ============================================================================
 
 import * as AdminActions from '../adminActions/index.js'
@@ -84,6 +86,7 @@ export const actionRegistry = {
 
   deleteHeroSlide: {
     kind: 'write',
+    requiresConfirmation: true, // destructiva: borra el registro y/o el archivo de Storage
     section: 'hero',
     llmTool: {
       name: 'deleteHeroSlide',
@@ -102,6 +105,7 @@ export const actionRegistry = {
 
   removeHeroImage: {
     kind: 'write',
+    requiresConfirmation: true, // destructiva: borra el registro y/o el archivo de Storage
     section: 'hero',
     llmTool: {
       name: 'removeHeroImage',
@@ -167,6 +171,7 @@ export const actionRegistry = {
 
   deleteGaleriaItem: {
     kind: 'write',
+    requiresConfirmation: true, // destructiva: borra el registro y/o el archivo de Storage
     section: 'galeria',
     llmTool: {
       name: 'deleteGaleriaItem',
@@ -185,6 +190,7 @@ export const actionRegistry = {
 
   removeGaleriaMedia: {
     kind: 'write',
+    requiresConfirmation: true, // destructiva: borra el registro y/o el archivo de Storage
     section: 'galeria',
     llmTool: {
       name: 'removeGaleriaMedia',
@@ -272,6 +278,7 @@ export const actionRegistry = {
 
   deleteServicio: {
     kind: 'write',
+    requiresConfirmation: true, // destructiva: borra el registro y/o el archivo de Storage
     section: 'servicios',
     llmTool: {
       name: 'deleteServicio',
@@ -366,6 +373,7 @@ export const actionRegistry = {
 
   deletePaquete: {
     kind: 'write',
+    requiresConfirmation: true, // destructiva: borra el registro y/o el archivo de Storage
     section: 'paquetes',
     llmTool: {
       name: 'deletePaquete',
@@ -469,6 +477,7 @@ export const actionRegistry = {
 
   deleteTestimonio: {
     kind: 'write',
+    requiresConfirmation: true, // destructiva: borra el registro y/o el archivo de Storage
     section: 'testimonios',
     llmTool: {
       name: 'deleteTestimonio',
@@ -575,6 +584,7 @@ export const actionRegistry = {
 
   deleteFaq: {
     kind: 'write',
+    requiresConfirmation: true, // destructiva: borra el registro y/o el archivo de Storage
     section: 'faq',
     llmTool: {
       name: 'deleteFaq',
