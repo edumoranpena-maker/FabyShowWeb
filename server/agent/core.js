@@ -34,6 +34,7 @@ import {
   executeMediaPlacement,
   parseMediaCaption,
 } from './mediaPlacement.js'
+import { normalizeGaleriaCategory, listCanonicalGaleriaCategories } from './galeriaCategories.js'
 
 const MATCH_FIELD_BY_SECTION = {
   paquetes: 'nombre',
@@ -282,13 +283,22 @@ async function continuePendingFlow({ channel, externalUserId, pending, text }) {
     }
 
     case 'media_awaiting_categoria': {
-      const categoria = text.trim()
-      if (!categoria) {
+      const raw = text.trim()
+      if (!raw) {
         return { replyText: '¿Qué categoría le pongo a este elemento de la Galería?' }
       }
-      // Ya tenemos adjunto + destino + categoría: dato completo, se
-      // ejecuta directo (Fase 2A) — sin pedir "¿la agrego?".
-      const placement = { attachment: pending.attachment, section: 'galeria', extra: { categoria } }
+      const resolved = normalizeGaleriaCategory(raw)
+      if (resolved.notFound) {
+        // Nunca se guarda un texto libre como categoría nueva — se
+        // mantiene el mismo estado pendiente y se le pide al usuario que
+        // elija una categoría real.
+        setPendingState(channel, externalUserId, { type: 'media_awaiting_categoria', attachment: pending.attachment })
+        return { replyText: categoryClarificationPrompt(raw) }
+      }
+      // Ya tenemos adjunto + destino + categoría (normalizada al valor
+      // canónico): dato completo, se ejecuta directo (Fase 2A) — sin
+      // pedir "¿la agrego?".
+      const placement = { attachment: pending.attachment, section: 'galeria', extra: { categoria: resolved.canonical } }
       return finalizeMediaPlacement({ channel, externalUserId, placement })
     }
 
@@ -432,6 +442,12 @@ async function handleFreshTextMessage({ channel, externalUserId, text, context =
   return { replyText: message }
 }
 
+/** Mensaje de aclaración cuando la categoría dicha por el usuario no coincide con ninguna real — nunca se crea una categoría nueva en silencio. */
+function categoryClarificationPrompt(rawInput) {
+  const options = listCanonicalGaleriaCategories().join(', ')
+  return `No reconozco la categoría "${rawInput}". Las categorías válidas son: ${options}. ¿Cuál uso?`
+}
+
 // ---------------------------------------------------------------------------
 // Flujo de fotos/videos.
 // ---------------------------------------------------------------------------
@@ -466,9 +482,18 @@ async function advanceMediaFlowWithDestination({ channel, externalUserId, attach
 
   if (section === 'galeria') {
     if (prefill?.categoria) {
-      // Destino + categoría ya vinieron en el mismo mensaje: dato
-      // completo, se ejecuta directo (Objetivo 1) — sin preguntar nada.
-      const placement = { attachment, section: 'galeria', extra: { categoria: prefill.categoria, captionText } }
+      const resolved = normalizeGaleriaCategory(prefill.categoria)
+      if (resolved.notFound) {
+        // El caption mencionaba una categoría, pero no coincide con
+        // ninguna real — se trata igual que "falta la categoría": se
+        // pregunta en vez de inventar una nueva (nunca se guarda tal cual).
+        setPendingState(channel, externalUserId, { type: 'media_awaiting_categoria', attachment })
+        return { replyText: categoryClarificationPrompt(prefill.categoria) }
+      }
+      // Destino + categoría ya vinieron en el mismo mensaje (normalizada
+      // al valor canónico): dato completo, se ejecuta directo (Objetivo 1)
+      // — sin preguntar nada.
+      const placement = { attachment, section: 'galeria', extra: { categoria: resolved.canonical, captionText } }
       return finalizeMediaPlacement({ channel, externalUserId, placement })
     }
     setPendingState(channel, externalUserId, { type: 'media_awaiting_categoria', attachment })

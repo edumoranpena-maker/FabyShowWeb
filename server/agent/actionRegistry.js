@@ -26,6 +26,7 @@
 
 import * as AdminActions from '../adminActions/index.js'
 import { extractStoragePathFromPublicUrl } from '../../src/services/contentService.js'
+import { normalizeGaleriaCategory, listCanonicalGaleriaCategories } from './galeriaCategories.js'
 import {
   resolveHeroSlide,
   resolveGaleriaItem,
@@ -47,6 +48,28 @@ import {
 } from './formatters.js'
 
 const matchProp = (desc) => ({ type: 'string', description: desc })
+
+/**
+ * Normaliza `values.categoria` (si viene) al valor canónico real de
+ * Galería antes de guardar — mismo criterio que al subir una foto nueva
+ * (ver server/agent/galeriaCategories.js). Si el texto no coincide con
+ * ninguna categoría real, se rechaza en vez de escribir un valor
+ * inventado: `updateGaleriaItem` es una acción con confirmación previa,
+ * así que para esta fase (mover media entre categorías) el error queda
+ * como el mensaje genérico de fallo de acción — nunca se persiste una
+ * categoría nueva por error de tipeo.
+ */
+function normalizeGaleriaUpdateValues(values) {
+  if (!values || typeof values.categoria !== 'string') return values
+  const resolved = normalizeGaleriaCategory(values.categoria)
+  if (resolved.notFound) {
+    throw new Error(
+      `"${values.categoria}" no es una categoría válida de Galería. ` +
+      `Categorías válidas: ${listCanonicalGaleriaCategories().join(', ')}.`
+    )
+  }
+  return { ...values, categoria: resolved.canonical }
+}
 
 export const actionRegistry = {
   // -------------------------------------------------------------- Hero --
@@ -167,7 +190,7 @@ export const actionRegistry = {
     },
     resolve: (params) => resolveGaleriaItem(params.match),
     describeTarget: describeGaleriaItem,
-    run: async (record, params) => AdminActions.updateGaleriaItem(record.id, params.values),
+    run: async (record, params) => AdminActions.updateGaleriaItem(record.id, normalizeGaleriaUpdateValues(params.values)),
     successMessage: () => '✅ Elemento de la Galería actualizado.',
   },
 

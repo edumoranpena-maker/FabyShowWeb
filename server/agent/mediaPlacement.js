@@ -19,6 +19,7 @@ import * as AdminActions from '../adminActions/index.js'
 import { downloadFileById } from '../telegram/telegramClient.js'
 import { resolveServicio, resolveTestimonio } from './resolvers.js'
 import { extractMediaPlacementIntent, generateMediaDescription } from './llm.js'
+import { normalizeGaleriaCategory } from './galeriaCategories.js'
 
 const SECTION_KEYWORDS = [
   { section: 'hero', pattern: /\bhero\b|\bportada\b/ },
@@ -189,6 +190,20 @@ export async function executeMediaPlacement(placement) {
   }
 
   if (section === 'galeria') {
+    // Red de seguridad: aunque core.js ya valida la categoría antes de
+    // llegar hasta acá, se vuelve a normalizar justo en el punto real de
+    // persistencia — así la garantía de "nunca guardar una categoría
+    // inventada" no depende de que todos los llamadores futuros lo hagan
+    // bien antes. Nunca debería disparar el error en uso normal.
+    const categoryResolution = normalizeGaleriaCategory(extra.categoria)
+    if (categoryResolution.notFound) {
+      throw new Error(
+        `"${extra.categoria}" no es una categoría válida de Galería. ` +
+        `Categorías válidas: ${categoryResolution.suggestions.join(', ')}.`
+      )
+    }
+    const categoria = categoryResolution.canonical
+
     const url = await AdminActions.uploadGaleriaMedia(buffer, filename)
     const existing = await AdminActions.listGaleriaItems()
     const nextOrden = existing.length > 0 ? Math.max(...existing.map((s) => s.orden ?? 0)) + 1 : 1
@@ -198,14 +213,14 @@ export async function executeMediaPlacement(placement) {
       buffer,
       ext,
       kind: attachment.kind,
-      categoria: extra.categoria,
+      categoria,
       section: 'galeria',
       captionText: extra.captionText,
     })
 
     await AdminActions.createGaleriaItem({
       src: url,
-      categoria: extra.categoria,
+      categoria,
       tipo,
       alto: 'medio',
       orden: nextOrden,
@@ -222,7 +237,7 @@ export async function executeMediaPlacement(placement) {
 
     return (
       `${tipo === 'video' ? '🎬' : '📸'} ✅ ${tipo === 'video' ? 'Video subido' : 'Foto subida'} correctamente\n\n` +
-      `📁 Galería → ${extra.categoria}\n` +
+      `📁 Galería → ${categoria}\n` +
       `🏷️ ID: ${alias}\n` +
       `📝 ${descripcion}`
     )
