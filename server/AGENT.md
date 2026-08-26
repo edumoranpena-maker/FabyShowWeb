@@ -238,3 +238,17 @@ Requiere la migración `supabase/migrations/20260821000000_add_media_metadata_to
 - El análisis visual (Gemini Vision) es solo para fotos — los videos no se analizan por frames en esta fase, usan un alias de respaldo.
 - La fecha del alias (`DD-MM`) se calcula en UTC (hora del servidor de Vercel), no en la zona horaria de Perú — puede diferir en un día cerca de la medianoche.
 - Esta identificación (alias/descripción/telegram_*) solo se guarda para Galería — Hero/Servicios/Testimonios no se tocaron (fuera del alcance de esta fase).
+
+## Contexto conversacional unificado (`activeTask` + `recentContext`)
+
+Ampliación arquitectónica: `conversationStore.js` dejó de usar un `Map` en memoria de proceso — ahora persiste en Supabase (tabla `agent_conversation_state`, migración `supabase/migrations/20260822000000_create_agent_conversation_state.sql`). Esto corrige la causa raíz de que el contexto se perdiera entre mensajes en Vercel (dos invocaciones consecutivas pueden caer en instancias serverless distintas — el Map anterior no sobrevivía a eso). Cero variables de entorno nuevas: reutiliza `getServerSupabaseClient()` de la Fase 1.
+
+**`active_task`** — una sola tarea en curso por usuario (mismo concepto que antes, ahora persistido). El flujo de subida de media (`placeMedia`) pasó de 4 tipos de estado separados (`media_awaiting_destination/categoria/target_servicio/target_testimonio`) a **uno solo con slots parciales** (`{slots, missingSlots, lastPrompt}`), que se va completando turno a turno sin perder lo ya conocido. `confirmation`, `disambiguation` y `pending_text_intent` (comandos de texto) mantienen su forma anterior, sin cambios de comportamiento.
+
+**`recent_context`** — concepto nuevo y separado, TTL corto (3 min): cuando se cancela una confirmación destructiva, se conserva la lista de candidatas (no la tarea completa) para poder retomarla ("entonces elimina la 2") sin repetir la búsqueda. Si el siguiente mensaje no se refiere claramente a esas candidatas, se ignora en silencio y el mensaje se procesa como una intención nueva — nunca se fuerza la tarea vieja.
+
+**Gemini en los turnos de seguimiento de media:** antes, después del primer mensaje, el flujo de media era 100% regex (esto causaba el bug de "Galería" interpretado como `listGaleriaItems`). Ahora, cuando el atajo determinista barato (palabra exacta de sección, categoría exacta) no resuelve, se llama a `extractMediaPlacementIntent(text, taskContext)` — la MISMA función acotada que ya se usaba para el caption inicial, nunca `resolveIntent()` con las 28 tools del whitelist — así Gemini interpreta lenguaje natural ("ponla en la galería") sin poder desviarse hacia una acción no relacionada.
+
+**Selección de candidatas en lenguaje natural** ("la de la animadora", "esa no, la otra"): capas deterministas primero (número, ordinal, substring del alias); si ninguna resuelve, Gemini elige un índice **restringido a las descripciones reales ya mostradas** (`resolveCandidateReference` en `llm.js`) — nunca puede inventar ni ver un id real.
+
+**Limitación conocida:** cada mensaje con `recentContext` activo dispara, en el peor caso, una llamada extra a Gemini para descartar que sea una referencia a las candidatas — aceptado como trade-off dado el TTL corto (3 min) y la baja frecuencia (solo tras cancelar un borrado).
