@@ -155,8 +155,21 @@ const MEDIA_PLACEMENT_SYSTEM_PROMPT = `Analiza el texto que un administrador de 
  * @param {string} captionText - el texto/caption que acompañó la foto/video
  * @returns {Promise<{ section?: string, categoria?: string, servicioNombre?: string, testimonioNombre?: string }>}
  */
-export async function extractMediaPlacementIntent(captionText) {
+/**
+ * @param {string} captionText - el texto/caption que acompañó la foto/video
+ * @param {{ slots: object, missingSlots: string[], lastPrompt: string|null }|null} [taskContext] -
+ *   la tarea de subida ya en curso, si este mensaje es un turno de
+ *   seguimiento (ej. el usuario contestando "¿Dónde quieres ponerla?").
+ *   Parámetro opcional — omitirlo reproduce el comportamiento anterior
+ *   (parseo aislado del primer caption, sin contexto).
+ * @returns {Promise<{ section?: string, categoria?: string, servicioNombre?: string, testimonioNombre?: string }>}
+ */
+export async function extractMediaPlacementIntent(captionText, taskContext = null) {
   const ai = getClient()
+
+  const systemInstruction = taskContext
+    ? `${MEDIA_PLACEMENT_SYSTEM_PROMPT}\n\n${buildMediaTaskContextNote(taskContext)}`
+    : MEDIA_PLACEMENT_SYSTEM_PROMPT
 
   let response
   try {
@@ -164,7 +177,7 @@ export async function extractMediaPlacementIntent(captionText) {
       model: GEMINI_MODEL,
       contents: [{ role: 'user', parts: [{ text: captionText }] }],
       config: {
-        systemInstruction: MEDIA_PLACEMENT_SYSTEM_PROMPT,
+        systemInstruction,
         tools: [{ functionDeclarations: [MEDIA_PLACEMENT_TOOL] }],
         toolConfig: { functionCallingConfig: { mode: 'ANY', allowedFunctionNames: ['extractMediaPlacement'] } },
       },
@@ -175,6 +188,31 @@ export async function extractMediaPlacementIntent(captionText) {
 
   const call = (response.functionCalls ?? [])[0]
   return call?.args ?? {}
+}
+
+/**
+ * Arma la nota de contexto que se le agrega al system prompt cuando este
+ * mensaje puede estar completando una tarea de subida ya en curso — es lo
+ * que le permite a Gemini interpretar "ponla en la galería" o "en la
+ * galería" como respuesta al slot "destino" en vez de una instrucción
+ * aislada, sin necesitar una regla nueva por cada forma de decirlo.
+ */
+function buildMediaTaskContextNote({ slots, missingSlots, lastPrompt }) {
+  const known = Object.entries(slots ?? {})
+    .filter(([key, value]) => key !== 'attachment' && value)
+    .map(([key, value]) => `${key}=${value}`)
+    .join(', ')
+
+  return [
+    'TAREA ACTIVA (ya en curso, NO la reinicies ni pidas datos que ya se dieron):',
+    'Se está subiendo una foto/video a Faby Show.',
+    `Datos ya conocidos: ${known || 'ninguno todavía'}.`,
+    `Dato que probablemente completa este mensaje: ${missingSlots?.[0] ?? 'ninguno en particular'}.`,
+    lastPrompt ? `Tu última pregunta fue: "${lastPrompt}"` : null,
+    'Interpreta el mensaje del usuario como la respuesta a esa pregunta, en lenguaje natural (no hace falta que sea la palabra exacta) — completa el dato que corresponda sin pedir de nuevo los que ya se conocían. Si el mensaje claramente no tiene relación con esto, no llames la función.',
+  ]
+    .filter(Boolean)
+    .join('\n')
 }
 
 // ============================================================================
@@ -246,4 +284,67 @@ export async function generateMediaDescription({ imageBase64, mimeType, categori
     throw new Error('Gemini no devolvió una descripción utilizable para esta imagen.')
   }
   return { aliasBase: call.args.alias_base, descripcion: call.args.descripcion ?? '' }
+}
+
+// ============================================================================
+// Selección de una candidata ya mostrada, por referencia en lenguaje
+// natural ("la de la animadora", "esa no, la otra"). Es SOLO un paso de
+// interpretación: Gemini únicamente puede devolver un número de índice
+// dentro de la lista de candidatas reales que se le pasa — el código es
+// quien mapea ese índice al registro real y quien decide qué hacer con
+// él. Gemini nunca ve ni puede inventar un id.
+//
+// Se usa como ÚLTIMO recurso, después de los atajos deterministas
+// (número exacto, "primera/segunda/tercera/última", substring contra el
+// alias) — no reemplaza esos atajos, los complementa para el lenguaje
+// verdaderamente ambiguo.
+// ============================================================================
+
+const SELECT_CANDIDATE_TOOL = {
+  name: 'selectCandidate',
+  description: 'Elige a cuál de las opciones numeradas se refiere el mensaje del usuario.',
+  parametersJsonSchema: {
+    type: 'object',
+    properties: {
+      index: {
+        type: 'integer',
+        description: 'Número (1-based) de la opción a la que se refiere el usuario. Usa 0 si el mensaje no se refiere claramente a ninguna de las opciones listadas.',
+      },
+    },
+    required: ['index'],
+    additionalProperties: false,
+  },
+}
+
+const SELECT_CANDIDATE_SYSTEM_PROMPT = `Un administrador de Faby Show recibió una lista numerada de opciones y respondió con un mensaje. Tu tarea es decidir a cuál opción se refiere, si a alguna. Usa 0 si el mensaje no tiene relación con elegir una de las opciones (ej. si es una pregunta nueva sobre otra cosa). Nunca inventes una opción que no esté en la lista.`
+
+/**
+ * @param {string} text - lo que escribió el usuario
+ * @param {string[]} candidateDescriptions - descripciones cortas ya generadas por el código (ej. alias), en el mismo orden que se le mostraron al usuario
+ * @returns {Promise<number>} índice 1-based de la opción elegida, o 0 si ninguna
+ */
+export async function resolveCandidateReference(text, candidateDescriptions) {
+  const ai = getClient()
+  const list = candidateDescriptions.map((d, i) => `${i + 1}. ${d}`).join('\n')
+  const prompt = `Opciones mostradas:\n${list}\n\nMensaje del usuario: "${text}"`
+
+  let response
+  try {
+    response = await ai.models.generateContent({
+      model: GEMINI_MODEL,
+      contents: [{ role: 'user', parts: [{ text: prompt }] }],
+      config: {
+        systemInstruction: SELECT_CANDIDATE_SYSTEM_PROMPT,
+        tools: [{ functionDeclarations: [SELECT_CANDIDATE_TOOL] }],
+        toolConfig: { functionCallingConfig: { mode: 'ANY', allowedFunctionNames: ['selectCandidate'] } },
+      },
+    })
+  } catch (err) {
+    throw new Error(`Fallo la selección de candidata: ${err?.message ?? err}`)
+  }
+
+  const call = (response.functionCalls ?? [])[0]
+  const index = Number(call?.args?.index)
+  if (!Number.isInteger(index) || index < 1 || index > candidateDescriptions.length) return 0
+  return index
 }
