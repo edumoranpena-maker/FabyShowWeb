@@ -249,6 +249,20 @@ Ampliación arquitectónica: `conversationStore.js` dejó de usar un `Map` en me
 
 **Gemini en los turnos de seguimiento de media:** antes, después del primer mensaje, el flujo de media era 100% regex (esto causaba el bug de "Galería" interpretado como `listGaleriaItems`). Ahora, cuando el atajo determinista barato (palabra exacta de sección, categoría exacta) no resuelve, se llama a `extractMediaPlacementIntent(text, taskContext)` — la MISMA función acotada que ya se usaba para el caption inicial, nunca `resolveIntent()` con las 28 tools del whitelist — así Gemini interpreta lenguaje natural ("ponla en la galería") sin poder desviarse hacia una acción no relacionada.
 
-**Selección de candidatas en lenguaje natural** ("la de la animadora", "esa no, la otra"): capas deterministas primero (número, ordinal, substring del alias); si ninguna resuelve, Gemini elige un índice **restringido a las descripciones reales ya mostradas** (`resolveCandidateReference` en `llm.js`) — nunca puede inventar ni ver un id real.
+**Selección de candidatas en lenguaje natural** ("la de la animadora", "esa no, la otra"): capas deterministas primero (número, ordinal, substring del alias); si ninguna resuelve, Gemini elige uno o más índices **restringidos a las descripciones reales ya mostradas** (`resolveSemanticCandidates` en `llm.js`, vía la capa reutilizable `server/agent/semanticResolve.js`) — nunca puede inventar ni ver un id real.
 
 **Limitación conocida:** cada mensaje con `recentContext` activo dispara, en el peor caso, una llamada extra a Gemini para descartar que sea una referencia a las candidatas — aceptado como trade-off dado el TTL corto (3 min) y la baja frecuencia (solo tras cancelar un borrado).
+
+## Resolución semántica generalizada (`semanticResolve.js`)
+
+Ampliación: la resolución semántica (antes solo en el paso de *selección* de candidatos ya mostrados) ahora también actúa en la *búsqueda* inicial — sin duplicar lógica de Gemini por sección. Una sola capa reutilizable:
+
+- **`resolveBySemanticMatch`** (búsqueda inicial, texto → uno o más registros reales): exacto → substring → si no fue inequívoco, Gemini interpreta lenguaje natural (typos, sinónimos, plural/singular, descripciones aproximadas o más largas que el alias/descripción guardados) sobre el universo real de esa entidad. La usan `resolveGaleriaMediaForDeletion`, `resolveGaleriaItem`, `resolveServicio`, `resolvePaquete`, `resolveTestimonio` y `resolveFaq` (`resolvers.js`). Hero se queda 100% determinista — no tiene un campo de texto real para comparar.
+- **`selectAmongShownCandidates`** (selección entre candidatos ya numerados/mostrados: desambiguación y `recentContext`) — mismo mecanismo de la fase anterior, movido acá sin cambiar su comportamiento.
+- **`filterBySemanticMatch`** (consultas de lectura con muchos resultados posibles, ej. `listGaleriaItems` con `busqueda` libre) — variante permisiva: no exige que el resultado sea único, es de solo lectura así que ser generoso es seguro.
+
+Las tres comparten la misma llamada a Gemini (`resolveSemanticCandidates`, `llm.js`): el modelo solo recibe descripciones de texto ya armadas por el código y solo puede devolver posiciones (1-based) dentro de esa lista — nunca ve ni puede inventar un id. El código valida enteros/rango/duplicados antes de mapear a un registro real.
+
+**Consultas de Galería con filtro:** `listGaleriaItems` ahora acepta `categoria` (una de las 5 reales, normalizada con `normalizeGaleriaCategory`) o `busqueda` (texto libre, vía `filterBySemanticMatch`) — Gemini decide cuál usar según la pregunta, sin necesitar una regex por variante de frase. La respuesta usa `describeGaleriaMedia` (alias real) en vez de la descripción genérica, y adjunta las fotos (`sendPhoto`, cero tokens de Gemini — es Telegram sirviendo URLs ya existentes) cuando el resultado filtrado es acotado (≤8).
+
+**Costo:** cada búsqueda/selección que no resuelve por atajo determinista cuesta 1 llamada extra a Gemini — aceptado como trade-off explícito (prioridad: robustez conversacional sobre ahorro de tokens, según se pidió). Universo acotado a 40 candidatos por llamada como salvaguarda de tamaño de prompt, no como paginación real.
