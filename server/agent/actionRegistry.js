@@ -27,6 +27,7 @@
 import * as AdminActions from '../adminActions/index.js'
 import { extractStoragePathFromPublicUrl } from '../../src/services/contentService.js'
 import { normalizeGaleriaCategory, listCanonicalGaleriaCategories } from './galeriaCategories.js'
+import { filterBySemanticMatch } from './semanticResolve.js'
 import {
   resolveHeroSlide,
   resolveGaleriaItem,
@@ -157,11 +158,62 @@ export const actionRegistry = {
     kind: 'read',
     llmTool: {
       name: 'listGaleriaItems',
-      description: 'Lista todos los elementos (fotos y videos) de la Galería.',
-      input_schema: { type: 'object', properties: {}, additionalProperties: false },
+      description:
+        'Lista elementos (fotos y videos) de la Galería. Si el usuario pregunta por una categoría concreta y real de Galería (ej. "qué fotos hay en decoración"), usa "categoria". Si describe un tema o contenido que NO es exactamente una de las categorías reales (ej. "qué tenemos de ranitas"), usa "busqueda". Si no menciona ningún filtro, no completes ninguno de los dos.',
+      input_schema: {
+        type: 'object',
+        properties: {
+          categoria: {
+            type: 'string',
+            description: 'Una de las categorías reales de Galería (Animación, Personajes, DJ, Decoración, Pintacaritas), si el usuario pidió exactamente una de esas.',
+          },
+          busqueda: {
+            type: 'string',
+            description: 'Palabras o tema que describen lo que el usuario busca, si NO es exactamente una categoría real. No completar si ya se completó "categoria".',
+          },
+        },
+        additionalProperties: false,
+      },
     },
-    run: async () => AdminActions.listGaleriaItems(),
-    formatResult: (items) => formatList('Elementos de la Galería', items, describeGaleriaItem),
+    run: async (params) => {
+      const items = await AdminActions.listGaleriaItems()
+      if (params?.categoria) {
+        const resolved = normalizeGaleriaCategory(params.categoria)
+        // Categoría no reconocida -> no forzar coincidencias con datos
+        // ajenos: se devuelve vacío, y formatResult lo explica.
+        if (!resolved.canonical) return []
+        return items.filter((it) => it.categoria === resolved.canonical)
+      }
+      if (params?.busqueda) {
+        return filterBySemanticMatch({
+          query: params.busqueda,
+          items,
+          describeFn: (it) => [it.alias, it.descripcion, it.categoria].filter(Boolean).join(' — '),
+        })
+      }
+      return items
+    },
+    formatResult: (items, params) => {
+      if (params?.categoria) {
+        const resolved = normalizeGaleriaCategory(params.categoria)
+        if (!resolved.canonical) {
+          return `No reconozco la categoría "${params.categoria}". Categorías válidas: ${listCanonicalGaleriaCategories().join(', ')}.`
+        }
+        return formatList(`Fotos en ${resolved.canonical}`, items, describeGaleriaMedia)
+      }
+      if (params?.busqueda) {
+        return formatList(`Resultados para "${params.busqueda}"`, items, describeGaleriaMedia)
+      }
+      return formatList('Elementos de la Galería', items, describeGaleriaMedia)
+    },
+    // Solo para resultados acotados (identificación visual) — si hay
+    // demasiados, se prioriza la lista de texto y que el usuario refine
+    // (nunca se manda esto a Gemini: es Telegram sirviendo URLs ya
+    // existentes, cero tokens de Gemini involucrados).
+    buildPhotos: (items) =>
+      items.length > 0 && items.length <= 8
+        ? items.filter((it) => it.src).map((it) => ({ url: it.src, caption: describeGaleriaMedia(it) }))
+        : undefined,
   },
 
   updateGaleriaItem: {

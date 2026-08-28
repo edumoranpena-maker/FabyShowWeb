@@ -2,15 +2,19 @@
 // Resolución de "match" de texto libre → registro concreto.
 //
 // El usuario escribe en lenguaje natural ("aprueba el de María", "cambia
-// el precio del Premium") — nunca un id de base de datos. Estas funciones
-// toman ese texto y lo resuelven contra los registros reales, reutilizando
-// los `list*` de AdminActions (sin acceder a Supabase directamente, sin
-// duplicar lógica).
+// el precio del Premium", "elimina la foto de la ranita") — nunca un id
+// de base de datos. Estas funciones reutilizan los `list*` de
+// AdminActions (sin acceder a Supabase directamente) y delegan la
+// interpretación en la capa única de server/agent/semanticResolve.js —
+// no hay un "resolveXWithGemini()" distinto por sección: todas pasan por
+// la misma función (`resolveBySemanticMatch`), que ya se encarga de
+// intentar primero coincidencia exacta/parcial (barato, sin Gemini) y
+// solo recurrir a Gemini cuando eso no fue inequívoco (typos, sinónimos,
+// descripciones aproximadas o más largas que el texto guardado).
 //
-// No es búsqueda difusa sofisticada: es normalización de acentos/mayúsculas
-// + coincidencia exacta o parcial. Es intencionalmente simple (ver
-// AGENT.md, "no sobrediseñar"); si hay 0 coincidencias o más de una, quien
-// llama debe pedirle aclaración al usuario en vez de adivinar.
+// Hero es la única excepción: no tiene un campo de texto real contra el
+// cual comparar semánticamente (solo posición/orden), así que se queda
+// 100% determinista.
 // ============================================================================
 
 import {
@@ -22,6 +26,7 @@ import {
   listPendingTestimonios,
   listFaqs,
 } from '../adminActions/index.js'
+import { resolveBySemanticMatch } from './semanticResolve.js'
 
 function normalize(value) {
   return (value ?? '')
@@ -32,54 +37,46 @@ function normalize(value) {
     .trim()
 }
 
-/**
- * @returns {{ record: object|null, ambiguous: object[], notFound: boolean }}
- */
-function resolveSingle(items, field, match) {
-  const nMatch = normalize(match)
-  if (!nMatch) return { record: null, ambiguous: [], notFound: true }
-
-  const exact = items.filter((it) => normalize(it[field]) === nMatch)
-  if (exact.length === 1) return { record: exact[0], ambiguous: [], notFound: false }
-  if (exact.length > 1) return { record: null, ambiguous: exact, notFound: false }
-
-  const partial = items.filter((it) => normalize(it[field]).includes(nMatch))
-  if (partial.length === 1) return { record: partial[0], ambiguous: [], notFound: false }
-  if (partial.length > 1) return { record: null, ambiguous: partial, notFound: false }
-
-  return { record: null, ambiguous: [], notFound: true }
-}
-
 export async function resolveTestimonio(match, { pendingOnly = false } = {}) {
   const items = pendingOnly ? await listPendingTestimonios() : await listTestimonios()
-  return resolveSingle(items, 'nombre', match)
+  return resolveBySemanticMatch({ query: match, items, describeFn: (it) => it.nombre })
 }
 
 export async function resolvePaquete(match) {
-  return resolveSingle(await listPaquetes(), 'nombre', match)
+  const items = await listPaquetes()
+  return resolveBySemanticMatch({ query: match, items, describeFn: (it) => it.nombre })
 }
 
 export async function resolveServicio(match) {
-  return resolveSingle(await listServicios(), 'titulo', match)
+  const items = await listServicios()
+  return resolveBySemanticMatch({ query: match, items, describeFn: (it) => it.titulo })
 }
 
 export async function resolveFaq(match) {
-  return resolveSingle(await listFaqs(), 'pregunta', match)
+  const items = await listFaqs()
+  return resolveBySemanticMatch({ query: match, items, describeFn: (it) => it.pregunta })
 }
 
+/** Para EDITAR un elemento de Galería por categoría (updateGaleriaItem). */
 export async function resolveGaleriaItem(match) {
-  return resolveSingle(await listGaleriaItems(), 'categoria', match)
+  const items = await listGaleriaItems()
+  return resolveBySemanticMatch({ query: match, items, describeFn: (it) => it.categoria })
 }
 
 /**
- * Resolver de búsqueda para ELIMINAR media de la Galería (Objetivo 2.6-2.9
- * del upgrade) — deliberadamente distinto de resolveGaleriaItem (que
- * solo mira "categoria", para editar). Este busca por alias/descripción/
- * categoría a la vez, y reconoce "la última foto/video que envié" como un
- * caso especial resuelto por fecha real (telegram_user_id + created_at),
- * no por texto.
+ * Resolver de búsqueda para ELIMINAR media de la Galería — deliberadamente
+ * distinto de resolveGaleriaItem (que solo mira "categoria", para editar).
+ * Este busca por alias/descripción/categoría combinados, y reconoce "la
+ * última foto/video que envié" como un caso especial resuelto por fecha
+ * real (telegram_user_id + created_at), no por texto — eso nunca pasa
+ * por Gemini, porque no es una interpretación de lenguaje, es una
+ * consulta a datos reales.
  *
- * @param {string} match - lo que escribió el usuario (ej. "la última foto", "Spider-Man", "Piñata Peppa Pig 23-08")
+ * Para todo lo demás ("la ranita", "hamburguesa de oreo", "la
+ * animadora"), delega en resolveBySemanticMatch — la misma capa que usan
+ * las demás secciones, sin duplicar lógica de Gemini acá.
+ *
+ * @param {string} match - lo que escribió el usuario
  * @param {{ externalUserId?: string }} [context]
  */
 export async function resolveGaleriaMediaForDeletion(match, context = {}) {
@@ -103,24 +100,15 @@ export async function resolveGaleriaMediaForDeletion(match, context = {}) {
     return { record: candidates[0], ambiguous: [], notFound: false }
   }
 
-  // Coincidencia exacta de alias tiene prioridad — permite "elimina Piñata
-  // Peppa Pig 23-08" con el alias completo tal como se lo mostramos antes.
-  const exactAlias = items.filter((it) => it.alias && normalize(it.alias) === n)
-  if (exactAlias.length === 1) return { record: exactAlias[0], ambiguous: [], notFound: false }
-
-  // Búsqueda estructurada simple: alias, descripción o categoría contienen el texto.
-  const fields = ['alias', 'descripcion', 'categoria']
-  const matches = items.filter((it) => fields.some((f) => it[f] && normalize(it[f]).includes(n)))
-
-  if (matches.length === 0) return { record: null, ambiguous: [], notFound: true }
-  if (matches.length === 1) return { record: matches[0], ambiguous: [], notFound: false }
-  return { record: null, ambiguous: matches, notFound: false }
+  const describeFn = (it) => [it.alias, it.descripcion, it.categoria].filter(Boolean).join(' — ')
+  return resolveBySemanticMatch({ query: match, items, describeFn })
 }
 
 /**
  * Los slides del Hero no tienen un campo de "nombre" — se identifican por
- * posición ("la última", "la primera") o por su número de orden. Resolver
- * deliberadamente más simple que los de arriba.
+ * posición ("la última", "la primera") o por su número de orden. Se
+ * queda 100% determinista a propósito: no hay texto real que comparar
+ * semánticamente, la ambigüedad acá es solo de posición.
  */
 export async function resolveHeroSlide(match) {
   const items = await listHeroSlides()

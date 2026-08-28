@@ -287,46 +287,52 @@ export async function generateMediaDescription({ imageBase64, mimeType, categori
 }
 
 // ============================================================================
-// Selección de una candidata ya mostrada, por referencia en lenguaje
-// natural ("la de la animadora", "esa no, la otra"). Es SOLO un paso de
-// interpretación: Gemini únicamente puede devolver un número de índice
-// dentro de la lista de candidatas reales que se le pasa — el código es
-// quien mapea ese índice al registro real y quien decide qué hacer con
-// él. Gemini nunca ve ni puede inventar un id.
+// Resolución semántica de texto libre contra candidatos reales — la capa
+// única y reutilizable que usa server/agent/semanticResolve.js tanto para
+// BÚSQUEDA inicial ("elimina la foto de la ranita" contra toda la
+// Galería) como para SELECCIÓN entre candidatos ya mostrados ("la de la
+// animadora", "esa no, la otra"). Gemini únicamente puede devolver
+// posiciones (1-based) dentro de la lista de descripciones reales que se
+// le pasa — el código es quien mapea esas posiciones a los registros
+// reales y quien decide qué hacer con ellos. Gemini nunca ve ni puede
+// inventar un id.
 //
 // Se usa como ÚLTIMO recurso, después de los atajos deterministas
-// (número exacto, "primera/segunda/tercera/última", substring contra el
-// alias) — no reemplaza esos atajos, los complementa para el lenguaje
-// verdaderamente ambiguo.
+// (exacto, "primera/segunda/tercera/última", substring) — no los
+// reemplaza, los complementa para lenguaje verdaderamente ambiguo: typos,
+// sinónimos, plural/singular, descripciones más largas o aproximadas que
+// el texto guardado.
 // ============================================================================
 
-const SELECT_CANDIDATE_TOOL = {
-  name: 'selectCandidate',
-  description: 'Elige a cuál de las opciones numeradas se refiere el mensaje del usuario.',
+const SELECT_CANDIDATES_TOOL = {
+  name: 'selectCandidates',
+  description: 'Elige cuáles de las opciones listadas coinciden razonablemente con lo que describe el usuario.',
   parametersJsonSchema: {
     type: 'object',
     properties: {
-      index: {
-        type: 'integer',
-        description: 'Número (1-based) de la opción a la que se refiere el usuario. Usa 0 si el mensaje no se refiere claramente a ninguna de las opciones listadas.',
+      indexes: {
+        type: 'array',
+        items: { type: 'integer' },
+        description:
+          'Números (1-based) de las opciones que coinciden razonablemente con la descripción del usuario. Vacío si ninguna coincide razonablemente — nunca fuerces una coincidencia. Puede haber más de una si varias son plausibles.',
       },
     },
-    required: ['index'],
+    required: ['indexes'],
     additionalProperties: false,
   },
 }
 
-const SELECT_CANDIDATE_SYSTEM_PROMPT = `Un administrador de Faby Show recibió una lista numerada de opciones y respondió con un mensaje. Tu tarea es decidir a cuál opción se refiere, si a alguna. Usa 0 si el mensaje no tiene relación con elegir una de las opciones (ej. si es una pregunta nueva sobre otra cosa). Nunca inventes una opción que no esté en la lista.`
+const SELECT_CANDIDATES_SYSTEM_PROMPT = `Un administrador de Faby Show describió lo que busca (o respondió a una lista de opciones), y estas son las opciones reales disponibles. Decide cuáles coinciden razonablemente, tolerando errores de tipeo, acentos, singular/plural, sinónimos, y descripciones más largas o informales que el texto original (ej. "fiesta infantil con temática de la ranita" puede coincidir con una opción llamada "Decoración Ranita"). Nunca inventes una opción que no esté en la lista. Si el mensaje no tiene relación con elegir ninguna de las opciones (ej. es una pregunta nueva sobre otra cosa), o si ninguna coincide razonablemente, devuelve una lista vacía.`
 
 /**
- * @param {string} text - lo que escribió el usuario
- * @param {string[]} candidateDescriptions - descripciones cortas ya generadas por el código (ej. alias), en el mismo orden que se le mostraron al usuario
- * @returns {Promise<number>} índice 1-based de la opción elegida, o 0 si ninguna
+ * @param {string} text - lo que escribió/describió el usuario
+ * @param {string[]} candidateDescriptions - descripciones reales ya armadas por el código, en el mismo orden en que se le mostrarían/mostraron al usuario
+ * @returns {Promise<number[]>} índices 1-based válidos (puede ser vacío) — ya filtrados a enteros dentro de rango, sin duplicados
  */
-export async function resolveCandidateReference(text, candidateDescriptions) {
+export async function resolveSemanticCandidates(text, candidateDescriptions) {
   const ai = getClient()
   const list = candidateDescriptions.map((d, i) => `${i + 1}. ${d}`).join('\n')
-  const prompt = `Opciones mostradas:\n${list}\n\nMensaje del usuario: "${text}"`
+  const prompt = `Opciones disponibles:\n${list}\n\nDescripción del usuario: "${text}"`
 
   let response
   try {
@@ -334,17 +340,19 @@ export async function resolveCandidateReference(text, candidateDescriptions) {
       model: GEMINI_MODEL,
       contents: [{ role: 'user', parts: [{ text: prompt }] }],
       config: {
-        systemInstruction: SELECT_CANDIDATE_SYSTEM_PROMPT,
-        tools: [{ functionDeclarations: [SELECT_CANDIDATE_TOOL] }],
-        toolConfig: { functionCallingConfig: { mode: 'ANY', allowedFunctionNames: ['selectCandidate'] } },
+        systemInstruction: SELECT_CANDIDATES_SYSTEM_PROMPT,
+        tools: [{ functionDeclarations: [SELECT_CANDIDATES_TOOL] }],
+        toolConfig: { functionCallingConfig: { mode: 'ANY', allowedFunctionNames: ['selectCandidates'] } },
       },
     })
   } catch (err) {
-    throw new Error(`Fallo la selección de candidata: ${err?.message ?? err}`)
+    throw new Error(`Fallo la resolución semántica de candidatos: ${err?.message ?? err}`)
   }
 
   const call = (response.functionCalls ?? [])[0]
-  const index = Number(call?.args?.index)
-  if (!Number.isInteger(index) || index < 1 || index > candidateDescriptions.length) return 0
-  return index
+  const raw = Array.isArray(call?.args?.indexes) ? call.args.indexes : []
+
+  // Defensa en profundidad: nunca confiamos ciegamente en lo que Gemini
+  // devuelve — solo enteros dentro del rango real de candidatos, sin duplicados.
+  return [...new Set(raw)].filter((i) => Number.isInteger(i) && i >= 1 && i <= candidateDescriptions.length)
 }

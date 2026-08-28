@@ -26,7 +26,8 @@
 // ============================================================================
 
 import { getActionEntry } from './actionRegistry.js'
-import { resolveIntent, extractMediaPlacementIntent, resolveCandidateReference } from './llm.js'
+import { resolveIntent, extractMediaPlacementIntent } from './llm.js'
+import { selectAmongShownCandidates } from './semanticResolve.js'
 import {
   getPendingState,
   setPendingState,
@@ -71,21 +72,6 @@ const MEDIA_SLOT_QUESTIONS = {
   testimonioNombre: '¿De qué testimonio es esta foto? Dime el nombre de la persona.',
 }
 
-const ORDINAL_WORDS = {
-  primera: 1,
-  primer: 1,
-  segunda: 2,
-  segundo: 2,
-  tercera: 3,
-  tercero: 3,
-  cuarta: 4,
-  cuarto: 4,
-  quinta: 5,
-  quinto: 5,
-  ultima: -1,
-  ultimo: -1,
-}
-
 function normalize(text) {
   return (text ?? '').toString().normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim()
 }
@@ -127,52 +113,11 @@ function photoUrlForRecord(record) {
 }
 
 // ---------------------------------------------------------------------------
-// Selección de una candidata ya mostrada — el mecanismo que reemplaza al
-// viejo resolveDisambiguation(), ahora también reutilizado por
-// recentContext (retomar una eliminación tras cancelarla). Capas, de más
-// barata a más cara; el código SIEMPRE decide con qué id se ejecuta —
-// Gemini, en la última capa, solo puede elegir un número dentro de la
-// lista real que se le pasa, nunca inventar uno.
+// La selección de una candidata ya mostrada (desambiguación / recentContext)
+// vive ahora en server/agent/semanticResolve.js (selectAmongShownCandidates)
+// — capa única y reutilizable, compartida con la búsqueda inicial de
+// resolvers.js. Nada de eso se duplica acá.
 // ---------------------------------------------------------------------------
-function resolveOrdinal(text, count) {
-  const n = normalize(text)
-  for (const [word, value] of Object.entries(ORDINAL_WORDS)) {
-    if (n.includes(word)) return value === -1 ? count : value
-  }
-  return null
-}
-
-async function resolveCandidateSelection(text, candidates, describeFn) {
-  if (!candidates?.length) return null
-  const trimmed = text.trim()
-
-  const idx = Number(trimmed)
-  if (!Number.isNaN(idx) && Number.isInteger(idx) && idx >= 1 && idx <= candidates.length) {
-    return candidates[idx - 1]
-  }
-
-  const ordinal = resolveOrdinal(trimmed, candidates.length)
-  if (ordinal && ordinal >= 1 && ordinal <= candidates.length) {
-    return candidates[ordinal - 1]
-  }
-
-  const n = normalize(trimmed)
-  const substringMatches = candidates.filter((c) => normalize(describeFn(c)).includes(n))
-  if (substringMatches.length === 1) return substringMatches[0]
-
-  // Último recurso: lenguaje natural ambiguo ("la de la animadora", "esa
-  // no, la otra") — Gemini elige un índice, restringido a las
-  // descripciones reales que ya se le mostraron al usuario.
-  try {
-    const descriptions = candidates.map((c) => describeFn(c))
-    const geminiIndex = await resolveCandidateReference(text, descriptions)
-    if (geminiIndex >= 1 && geminiIndex <= candidates.length) return candidates[geminiIndex - 1]
-  } catch (err) {
-    logAgentEvent('candidate_selection_error', { error: String(err?.message ?? err).slice(0, 200) })
-  }
-
-  return null
-}
 
 // ---------------------------------------------------------------------------
 // Ejecución de una acción del registro, con logging. SIEMPRE pasa por acá
@@ -300,7 +245,7 @@ async function tryResumeFromRecentContext({ channel, externalUserId, recent, tex
   const entry = getActionEntry(recent.actionName)
   if (!entry) return null
 
-  const chosen = await resolveCandidateSelection(text, recent.candidates, entry.describeTarget)
+  const chosen = await selectAmongShownCandidates({ query: text, candidates: recent.candidates, describeFn: entry.describeTarget })
   if (!chosen) return null
 
   await clearRecentContext(channel, externalUserId)
@@ -364,7 +309,7 @@ async function continuePendingFlow({ channel, externalUserId, pending, text }) {
         await clearPendingState(channel, externalUserId)
         return { replyText: '❌ Esa acción ya no está disponible.' }
       }
-      const chosen = await resolveCandidateSelection(text, pending.options, entry.describeTarget)
+      const chosen = await selectAmongShownCandidates({ query: text, candidates: pending.options, describeFn: entry.describeTarget })
       if (!chosen) {
         return { replyText: 'No identifiqué cuál de las opciones. Responde con el número, el nombre, o descríbela.' }
       }
@@ -467,7 +412,10 @@ async function handleFreshTextMessage({ channel, externalUserId, text, context =
     })
     if (data === null) return { replyText: '❌ No pude obtener esa información. Intenta de nuevo en un momento.' }
     logAdminAction({ channel, externalUserId, action: intent.name, params, success: true })
-    return { replyText: entry.formatResult(data) }
+    // Solo algunas consultas (ej. listGaleriaItems) saben armar fotos —
+    // el resto simplemente no define buildPhotos y no cambia su comportamiento.
+    const photos = entry.buildPhotos ? entry.buildPhotos(data, params) : undefined
+    return { replyText: entry.formatResult(data, params), photos }
   }
 
   // kind === 'write'. Dato completo + acción no destructiva → ejecutar
